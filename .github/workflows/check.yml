@@ -18,7 +18,7 @@ jobs:
       - name: Type check
         run: npm run typecheck
       - name: Tests
-        run: npm test
+        run: node --experimental-strip-types --test 'src/**/*.test.ts'
       - name: Build
         run: npm run build
         env:
