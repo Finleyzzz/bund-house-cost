@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
@@ -1019,13 +1020,7 @@ function Studio({
   const [askLine, setAskLine] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
+  useEffect(lockBodyScroll, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -2261,6 +2256,18 @@ function plainNum(n: number | null | undefined) {
   return Math.round(n).toLocaleString("id-ID");
 }
 
+// Ref-counted page scroll lock for full-screen panels. Always clears the
+// inline style once the last panel closes, so the page can never stay stuck.
+let scrollLocks = 0;
+function lockBodyScroll() {
+  scrollLocks += 1;
+  document.body.style.overflow = "hidden";
+  return () => {
+    scrollLocks = Math.max(0, scrollLocks - 1);
+    if (scrollLocks === 0) document.body.style.removeProperty("overflow");
+  };
+}
+
 function useHeaderHeight() {
   const [height, setHeight] = useState(0);
   useEffect(() => {
@@ -2368,8 +2375,13 @@ function CategoryBoard({
       className="px-4 pt-6 sm:px-8 md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-8"
     >
       <aside
-        className="md:sticky md:self-start md:overflow-y-auto md:overscroll-contain md:pr-1 md:[scrollbar-width:thin]"
-        style={{ top: headerH + 16, maxHeight: `calc(100dvh - ${headerH + 32}px)` }}
+        className="md:sticky md:top-(--side-top) md:max-h-(--side-max) md:self-start md:overflow-y-auto md:pr-1 md:[scrollbar-width:thin]"
+        style={
+          {
+            "--side-top": `${headerH + 16}px`,
+            "--side-max": `calc(100dvh - ${headerH + 32}px)`,
+          } as CSSProperties
+        }
       >
         <p className="px-3 text-xs text-faint max-md:hidden">{t.workbench}</p>
         <button
