@@ -28,7 +28,10 @@ export type NewVersionInput = {
   enteredSale: number | null;
 };
 
-export function nextMaterialCode(category: string, materials: { category: string; code: string }[]) {
+export function nextMaterialCode(
+  category: string,
+  materials: { category: string; code: string }[],
+) {
   let best: { prefix: string; width: number; n: number } | null = null;
   for (const item of materials) {
     if (item.category !== category) continue;
@@ -57,15 +60,32 @@ type HouseState = {
   addMaterialCategory: (name: string) => boolean;
   renameMaterialCategory: (from: string, to: string) => boolean;
   removeMaterialCategory: (name: string) => boolean;
-  addMaterial: (input: { category: string; name: string; code?: string; baseUnit: number | null; price: number | null }) => boolean;
-  updateMaterial: (id: string, patch: Partial<Pick<Material, "category" | "name" | "code" | "baseUnit" | "price">>) => void;
+  addMaterial: (input: {
+    category: string;
+    name: string;
+    code?: string;
+    baseUnit: number | null;
+    price: number | null;
+  }) => boolean;
+  updateMaterial: (
+    id: string,
+    patch: Partial<Pick<Material, "category" | "name" | "code" | "baseUnit" | "price">>,
+  ) => void;
   removeMaterial: (id: string) => void;
   addCategory: (name: string, en: string) => boolean;
   renameCategory: (id: string, name: string, en: string) => void;
   removeCategory: (id: string) => boolean;
   addDish: (input: NewVersionInput) => string;
   saveNewVersion: (dishId: string, input: NewVersionInput) => void;
-  updateDishMeta: (dishId: string, meta: { name: string; nameEn: string; categoryId: string }) => void;
+  updateDishMeta: (
+    dishId: string,
+    meta: { name: string; nameEn: string; categoryId: string },
+  ) => void;
+  /** Edit the current version in place. Cost and sale price follow the lines and margin. */
+  editVersion: (
+    dishId: string,
+    patch: { lines?: Ingredient[]; margin?: number; note?: string },
+  ) => void;
   removeDish: (dishId: string) => void;
   setListed: (dishId: string, listed: boolean) => void;
   resetDemo: () => void;
@@ -89,7 +109,8 @@ export const useCostStore = create<HouseState>()(
         const trimmed = name.trim();
         const code = password.trim();
         if (!trimmed || !code) return false;
-        if (get().accounts.some((item) => item.name.toLowerCase() === trimmed.toLowerCase())) return false;
+        if (get().accounts.some((item) => item.name.toLowerCase() === trimmed.toLowerCase()))
+          return false;
         set({ accounts: [...get().accounts, { id: uid("who"), name: trimmed, code }] });
         return true;
       },
@@ -108,7 +129,9 @@ export const useCostStore = create<HouseState>()(
         if (get().materialCategories.includes(next)) return false;
         set({
           materialCategories: get().materialCategories.map((item) => (item === prev ? next : item)),
-          materials: get().materials.map((item) => (item.category === prev ? { ...item, category: next } : item)),
+          materials: get().materials.map((item) =>
+            item.category === prev ? { ...item, category: next } : item,
+          ),
         });
         return true;
       },
@@ -128,7 +151,8 @@ export const useCostStore = create<HouseState>()(
       addMaterial: (input) => {
         const name = input.name.trim();
         if (!name) return false;
-        if (get().materials.some((item) => item.name.toLowerCase() === name.toLowerCase())) return false;
+        if (get().materials.some((item) => item.name.toLowerCase() === name.toLowerCase()))
+          return false;
         const category = input.category.trim() || "其他";
         const categories = get().materialCategories.includes(category)
           ? get().materialCategories
@@ -271,6 +295,31 @@ export const useCostStore = create<HouseState>()(
           ),
         });
       },
+      editVersion: (dishId, patch) => {
+        set({
+          dishes: get().dishes.map((dish) => {
+            if (dish.id !== dishId || dish.versions.length === 0) return dish;
+            const last = dish.versions[dish.versions.length - 1];
+            const lines = patch.lines ? patch.lines.map(cleanLine) : last.lines;
+            const margin = patch.margin ?? last.margin;
+            const enteredCost = patch.lines ? null : (last.enteredCost ?? null);
+            const enteredSale = patch.margin != null ? null : (last.enteredSale ?? null);
+            const cost = enteredCost ?? recipeCost(lines, get().materials);
+            const salePrice =
+              enteredSale != null ? round2(enteredSale) : (saleFrom(cost, margin) ?? 0);
+            const next = {
+              ...last,
+              lines,
+              margin,
+              note: patch.note ?? last.note,
+              enteredCost,
+              enteredSale,
+              salePrice,
+            };
+            return { ...dish, versions: [...dish.versions.slice(0, -1), next] };
+          }),
+        });
+      },
       removeDish: (dishId) => {
         set({ dishes: get().dishes.filter((d) => d.id !== dishId) });
       },
@@ -307,11 +356,13 @@ export const useCostStore = create<HouseState>()(
           session?: { id?: string; name?: string; code?: string; account?: string } | null;
         };
         const raw = saved.session;
-        const session: Session | null = raw?.name ? { id: "admin", name: "admin", code: "bh888" } : null;
+        const session: Session | null = raw?.name
+          ? { id: "admin", name: "admin", code: "bh888" }
+          : null;
         const accounts = [admin];
-        const categories = (saved.categories?.length ? saved.categories : current.categories).filter(
-          (category) => category.name.replace(/\s/g, "") !== "一二三",
-        );
+        const categories = (
+          saved.categories?.length ? saved.categories : current.categories
+        ).filter((category) => category.name.replace(/\s/g, "") !== "一二三");
         const dropped = new Set(
           (saved.categories ?? [])
             .filter((category) => category.name.replace(/\s/g, "") === "一二三")
@@ -321,14 +372,26 @@ export const useCostStore = create<HouseState>()(
         const dishes = (saved.dishes?.length ? saved.dishes : current.dishes).map((dish) =>
           dropped.has(dish.categoryId) && fallbackId ? { ...dish, categoryId: fallbackId } : dish,
         );
-        const materialCategories = (saved.materialCategories?.length ? saved.materialCategories : current.materialCategories).filter(
-          (name) => name.replace(/\s/g, "") !== "一二三",
-        );
+        const materialCategories = (
+          saved.materialCategories?.length ? saved.materialCategories : current.materialCategories
+        ).filter((name) => name.replace(/\s/g, "") !== "一二三");
         const materialFallback = materialCategories[0] ?? "其他";
-        const materials = (saved.materials?.length ? saved.materials : current.materials).map((item) =>
-          item.category.replace(/\s/g, "") === "一二三" ? { ...item, category: materialFallback } : item,
+        const materials = (saved.materials?.length ? saved.materials : current.materials).map(
+          (item) =>
+            item.category.replace(/\s/g, "") === "一二三"
+              ? { ...item, category: materialFallback }
+              : item,
         );
-        return { ...current, ...saved, session, accounts, categories, dishes, materialCategories, materials };
+        return {
+          ...current,
+          ...saved,
+          session,
+          accounts,
+          categories,
+          dishes,
+          materialCategories,
+          materials,
+        };
       },
     },
   ),
@@ -343,11 +406,11 @@ function cleanLine(line: Ingredient): Ingredient {
   };
 }
 
-function priceOf(
-  get: () => { materials: Material[] },
-  input: NewVersionInput,
-) {
-  const cost = input.enteredCost != null ? round2(input.enteredCost) : recipeCost(input.lines, get().materials);
+function priceOf(get: () => { materials: Material[] }, input: NewVersionInput) {
+  const cost =
+    input.enteredCost != null
+      ? round2(input.enteredCost)
+      : recipeCost(input.lines, get().materials);
   if (input.enteredSale != null) return round2(input.enteredSale);
   return saleFrom(cost, input.margin) ?? 0;
 }
