@@ -19,7 +19,7 @@ function Home() {
   }
 
   if (!hydrated) {
-    return <main className="min-h-dvh bg-black" />;
+    return <main className="min-h-dvh bg-void" />;
   }
 
   if (!session) {
