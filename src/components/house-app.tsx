@@ -2368,8 +2368,8 @@ function CategoryBoard({
       className="px-4 pt-6 sm:px-8 md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-8"
     >
       <aside
-        className="md:self-start [@media(min-width:768px)_and_(min-height:760px)]:sticky"
-        style={{ top: headerH + 16 }}
+        className="md:sticky md:self-start md:overflow-y-auto md:overscroll-contain md:pr-1 md:[scrollbar-width:thin]"
+        style={{ top: headerH + 16, maxHeight: `calc(100dvh - ${headerH + 32}px)` }}
       >
         <p className="px-3 text-xs text-faint max-md:hidden">{t.workbench}</p>
         <button
