@@ -41,7 +41,7 @@ export function IntroScreen({ onSkip }: { onSkip: () => void }) {
   }, [onSkip]);
 
   return (
-    <main className="night relative grid min-h-dvh place-items-center overflow-hidden bg-black px-6">
+    <main className="night relative grid min-h-dvh place-items-center overflow-hidden bg-void px-6">
       <div className="logo-stage is-playing">
         <img
           src="/brand/logo.png"
