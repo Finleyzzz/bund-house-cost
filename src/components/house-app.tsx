@@ -1,5 +1,13 @@
-import { ChevronLeft, Plus, Search, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { ChevronLeft, Copy as CopyIcon, Plus, Search, X } from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Wordmark } from "@/components/wordmark";
@@ -20,6 +28,7 @@ import {
   parseNum,
   recipeCost,
   round2,
+  round4,
   saleFrom,
   versionCost,
   versionStats,
@@ -30,7 +39,14 @@ import { nextMaterialCode, uid, useCostStore, type NewVersionInput } from "@/lib
 import { buildCostRows, downloadCostWorkbook, isListed, readCostWorkbook } from "@/lib/cost/excel";
 import { clearAllFiles, clearDishFiles } from "@/lib/cost/files";
 import { DishFiles } from "@/components/dish-files";
-import type { Category, CostVersion, Dish, DraftLine, Ingredient, Material } from "@/lib/cost/types";
+import type {
+  Category,
+  CostVersion,
+  Dish,
+  DraftLine,
+  Ingredient,
+  Material,
+} from "@/lib/cost/types";
 import { useTheme } from "@/lib/theme";
 import { useLang, type Copy, type Lang } from "@/lib/lang";
 
@@ -59,17 +75,10 @@ function errText(code: string | null, t: Copy) {
 
 type StudioState = { mode: "dish"; dishId: string } | { mode: "new"; categoryId: string };
 
-export function HouseApp({
-  onSignOut,
-  onReplay,
-}: {
-  onSignOut: () => void;
-  onReplay: () => void;
-}) {
+export function HouseApp({ onSignOut, onReplay }: { onSignOut: () => void; onReplay: () => void }) {
   const categories = useCostStore((s) => s.categories);
   const dishes = useCostStore((s) => s.dishes);
   const materials = useCostStore((s) => s.materials);
-  const removeCategory = useCostStore((s) => s.removeCategory);
   const updateDishMeta = useCostStore((s) => s.updateDishMeta);
   const setListed = useCostStore((s) => s.setListed);
   const updateMaterial = useCostStore((s) => s.updateMaterial);
@@ -82,8 +91,6 @@ export function HouseApp({
   const [catsOpen, setCatsOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [matCatsOpen, setMatCatsOpen] = useState(false);
-  const [askCat, setAskCat] = useState<string | null>(null);
-  const [openCat, setOpenCat] = useState<string | null>(null);
   const [shelf, setShelf] = useState<"on" | "off" | "all">("on");
   const [toast, setToast] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -114,7 +121,8 @@ export function HouseApp({
     if (shelf === "on" && !on) return false;
     if (shelf === "off" && on) return false;
     if (!q || searchMode !== "dish") return true;
-    const blob = `${row.dish.name} ${row.dish.nameEn} ${row.dish.sub} ${row.dish.subEn} ${row.category?.name ?? ""} ${row.category?.en ?? ""}`.toLowerCase();
+    const blob =
+      `${row.dish.name} ${row.dish.nameEn} ${row.dish.sub} ${row.dish.subEn} ${row.category?.name ?? ""} ${row.category?.en ?? ""}`.toLowerCase();
     return blob.includes(q);
   });
 
@@ -161,7 +169,8 @@ export function HouseApp({
       margin: (sale - cost) / sale,
       note: row.version.note,
       lines: row.version.lines,
-      enteredCost: lineCost != null && Math.round(lineCost) === Math.round(cost) ? null : round2(cost),
+      enteredCost:
+        lineCost != null && Math.round(lineCost) === Math.round(cost) ? null : round2(cost),
       enteredSale: round2(sale),
     });
   };
@@ -190,11 +199,15 @@ export function HouseApp({
       setListed(dish.id, group[0].listed);
       for (const row of group) {
         if (!row.material) continue;
-        const material = findMaterial({ materialId: null, name: row.material }, useCostStore.getState().materials);
+        const material = findMaterial(
+          { materialId: null, name: row.material },
+          useCostStore.getState().materials,
+        );
         if (!material) continue;
         const patch: { price?: number | null; baseUnit?: number | null } = {};
         if (row.price != null && row.price !== material.price) patch.price = row.price;
-        if (row.baseUnit != null && row.baseUnit !== material.baseUnit) patch.baseUnit = row.baseUnit;
+        if (row.baseUnit != null && row.baseUnit !== material.baseUnit)
+          patch.baseUnit = row.baseUnit;
         if (patch.price != null || patch.baseUnit != null) updateMaterial(material.id, patch);
       }
       const fresh = useCostStore.getState().dishes.find((item) => item.id === dish.id);
@@ -205,15 +218,27 @@ export function HouseApp({
       let linesTouched = false;
       for (const row of group) {
         if (!row.material || row.usage == null) continue;
-        const material = findMaterial({ materialId: null, name: row.material }, useCostStore.getState().materials);
+        const material = findMaterial(
+          { materialId: null, name: row.material },
+          useCostStore.getState().materials,
+        );
         const index = nextLines.findIndex((line) => line.name.trim() === row.material.trim());
         if (index >= 0) {
           if (nextLines[index].usage !== row.usage) {
-            nextLines[index] = { ...nextLines[index], usage: row.usage, materialId: material?.id ?? nextLines[index].materialId };
+            nextLines[index] = {
+              ...nextLines[index],
+              usage: row.usage,
+              materialId: material?.id ?? nextLines[index].materialId,
+            };
             linesTouched = true;
           }
         } else {
-          nextLines.push({ id: uid("l"), materialId: material?.id ?? null, name: row.material, usage: row.usage });
+          nextLines.push({
+            id: uid("l"),
+            materialId: material?.id ?? null,
+            name: row.material,
+            usage: row.usage,
+          });
           linesTouched = true;
         }
       }
@@ -257,7 +282,10 @@ export function HouseApp({
         </div>
         <div className="px-4 pb-3 sm:px-8">
           <label className="relative block">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-faint" strokeWidth={1.5} />
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-faint"
+              strokeWidth={1.5}
+            />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -270,14 +298,22 @@ export function HouseApp({
             <button
               type="button"
               onClick={() => setSearchMode("dish")}
-              className={searchMode === "dish" ? "h-9 rounded-md bg-fg px-3 text-sm text-ink" : "h-9 rounded-md border border-line px-3 text-sm text-muted"}
+              className={
+                searchMode === "dish"
+                  ? "h-9 rounded-md bg-fg px-3 text-sm text-ink"
+                  : "h-9 rounded-md border border-line px-3 text-sm text-muted"
+              }
             >
               {t.searchDish}
             </button>
             <button
               type="button"
               onClick={() => setSearchMode("material")}
-              className={searchMode === "material" ? "h-9 rounded-md bg-fg px-3 text-sm text-ink" : "h-9 rounded-md border border-line px-3 text-sm text-muted"}
+              className={
+                searchMode === "material"
+                  ? "h-9 rounded-md bg-fg px-3 text-sm text-ink"
+                  : "h-9 rounded-md border border-line px-3 text-sm text-muted"
+              }
             >
               {t.searchMaterial}
             </button>
@@ -285,61 +321,66 @@ export function HouseApp({
         </div>
       </header>
 
-      <section className="px-4 pt-6 sm:px-8">
-        <h1 className="font-display text-3xl text-fg sm:text-4xl">{searchMode === "material" ? t.library : t.title}</h1>
-        <p className="mt-1 text-sm text-muted">{searchMode === "material" ? t.libraryHint : t.blurb}</p>
-        {searchMode === "material" ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button size="lg" onClick={() => setLibraryOpen(true)}>
-              {t.openLibrary}
-            </Button>
-            <Button variant="line" size="lg" onClick={() => setMatCatsOpen(true)}>
-              {t.editMatCats}
-            </Button>
-          </div>
-        ) : (
-          <>
+      {searchMode === "material" || q ? (
+        <section className="px-4 pt-6 sm:px-8">
+          <h1 className="font-display text-3xl text-fg sm:text-4xl">
+            {searchMode === "material" ? t.library : t.title}
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            {searchMode === "material" ? t.libraryHint : t.blurb}
+          </p>
+          {searchMode === "material" ? (
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button onClick={() => downloadCostWorkbook(buildCostRows(dishes, categories, materials))}>{t.exportExcel}</Button>
-              <Button variant="line" onClick={() => fileRef.current?.click()}>{t.importExcel}</Button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void onImport(file);
-                }}
-              />
+              <Button size="lg" onClick={() => setLibraryOpen(true)}>
+                {t.openLibrary}
+              </Button>
+              <Button variant="line" size="lg" onClick={() => setMatCatsOpen(true)}>
+                {t.editMatCats}
+              </Button>
             </div>
-            <div className="mt-3 flex gap-2">
-              {(
-                [
-                  ["on", t.onSale],
-                  ["off", t.offShelf],
-                  ["all", t.allDishes],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setShelf(id)}
-                  className={shelf === id ? "h-9 rounded-md bg-fg px-3 text-sm text-ink" : "h-9 rounded-md border border-line px-3 text-sm text-muted"}
+          ) : (
+            <>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  onClick={() => downloadCostWorkbook(buildCostRows(dishes, categories, materials))}
                 >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-line">
-              <Stat label={t.avg} value={formatPct(avg)} tone={marginTone(avg)} />
-              <Stat label={t.dishes} value={String(cards.length)} />
-              <Stat label={t.noCost} value={String(uncosted)} />
-            </div>
-          </>
-        )}
-      </section>
+                  {t.exportExcel}
+                </Button>
+                <Button variant="line" onClick={() => fileRef.current?.click()}>
+                  {t.importExcel}
+                </Button>
+              </div>
+              <div className="mt-3 flex gap-2">
+                {(
+                  [
+                    ["on", t.onSale],
+                    ["off", t.offShelf],
+                    ["all", t.allDishes],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setShelf(id)}
+                    className={
+                      shelf === id
+                        ? "h-9 rounded-md bg-fg px-3 text-sm text-ink"
+                        : "h-9 rounded-md border border-line px-3 text-sm text-muted"
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-line">
+                <Stat label={t.avg} value={formatPct(avg)} tone={marginTone(avg)} />
+                <Stat label={t.dishes} value={String(cards.length)} />
+                <Stat label={t.noCost} value={String(uncosted)} />
+              </div>
+            </>
+          )}
+        </section>
+      ) : null}
 
       {searchMode === "material" && !q ? (
         <p className="mt-8 px-4 text-sm text-muted sm:px-8">{t.searchMatPh}</p>
@@ -367,7 +408,7 @@ export function HouseApp({
                 {dishesUsing.length === 0 ? (
                   <p className="mt-3 text-sm text-muted">{t.notUsed}</p>
                 ) : (
-                  <div className="mt-2 max-h-64 overflow-y-auto">
+                  <div className="mt-2">
                     {dishesUsing.map(({ row, usage }) => (
                       <DishLine
                         key={row.dish.id}
@@ -388,7 +429,7 @@ export function HouseApp({
           {visible.length === 0 ? (
             <p className="mt-4 text-sm text-muted">{t.none}</p>
           ) : (
-            <div className="mt-2 max-h-80 overflow-auto">
+            <div className="mt-2 overflow-x-auto">
               <div className="min-w-[36rem]">
                 <LineHead />
                 {visible.map((row) => (
@@ -398,7 +439,11 @@ export function HouseApp({
                     categories={ordered}
                     onOpen={() => setStudio({ mode: "dish", dishId: row.dish.id })}
                     onMove={(categoryId) =>
-                      updateDishMeta(row.dish.id, { name: row.dish.name, nameEn: row.dish.nameEn, categoryId })
+                      updateDishMeta(row.dish.id, {
+                        name: row.dish.name,
+                        nameEn: row.dish.nameEn,
+                        categoryId,
+                      })
                     }
                     onPrice={(cost, sale) => commitPrice(row, cost, sale)}
                   />
@@ -407,90 +452,46 @@ export function HouseApp({
             </div>
           )}
         </section>
+      ) : cards.length === 0 ? (
+        <p className="px-4 py-16 text-center text-sm text-muted sm:px-8">{t.empty}</p>
       ) : (
-        <>
-          {watched.length > 0 && (
-            <CategoryRow
-              title={t.watch}
-              en=""
-              count={watched.length}
-              open={openCat === "watch"}
-              onToggle={() => setOpenCat(openCat === "watch" ? null : "watch")}
-            >
-              <LineHead />
-              {watched.map((row) => (
-                <DishLine
-                  key={row.dish.id}
-                  row={row}
-                  categories={ordered}
-                  onOpen={() => setStudio({ mode: "dish", dishId: row.dish.id })}
-                  onMove={(categoryId) =>
-                    updateDishMeta(row.dish.id, { name: row.dish.name, nameEn: row.dish.nameEn, categoryId })
-                  }
-                  onPrice={(cost, sale) => commitPrice(row, cost, sale)}
-                />
-              ))}
-            </CategoryRow>
-          )}
-          {ordered
-            .filter((category) => category.name !== "辅料")
-            .map((category) => {
-            const list = visible.filter((row) => row.dish.categoryId === category.id);
-            const fallback = ordered.find((item) => item.id !== category.id);
-            const title = shownName(category.name, category.en, lang);
-            const fallbackName = fallback ? shownName(fallback.name, fallback.en, lang) : "";
-            return (
-              <CategoryRow
-                key={category.id}
-                title={title}
-                en={lang === "en" ? category.name : category.en}
-                count={list.length}
-                open={openCat === category.id}
-                onToggle={() => setOpenCat(openCat === category.id ? null : category.id)}
-                asking={askCat === category.id}
-                askNote={
-                  list.length > 0 && fallback
-                    ? `${t.confirmDeleteQ(title)} ${t.moveDishes(list.length, fallbackName)}`
-                    : list.length > 0
-                      ? `${t.confirmDeleteQ(title)} ${t.catHasDishes}`
-                      : t.confirmDeleteQ(title)
-                }
-                onAsk={() => setAskCat(category.id)}
-                onCancel={() => setAskCat(null)}
-                onConfirm={() => {
-                  const ok = removeCategory(category.id);
-                  if (!ok) setToast(t.catHasDishes);
-                  setAskCat(null);
-                }}
-                onAdd={() => setStudio({ mode: "new", categoryId: category.id })}
-              >
-                <LineHead />
-                {list.map((row) => (
-                  <DishLine
-                    key={row.dish.id}
-                    row={row}
-                    categories={ordered}
-                    onOpen={() => setStudio({ mode: "dish", dishId: row.dish.id })}
-                    onMove={(categoryId) =>
-                      updateDishMeta(row.dish.id, { name: row.dish.name, nameEn: row.dish.nameEn, categoryId })
-                    }
-                    onPrice={(cost, sale) => commitPrice(row, cost, sale)}
-                  />
-                ))}
-              </CategoryRow>
-            );
-          })}
-          {cards.length === 0 && (
-            <p className="px-4 py-16 text-center text-sm text-muted sm:px-8">{t.empty}</p>
-          )}
-          <div className="px-4 sm:px-8">
-            <Button variant="line" onClick={() => setCatsOpen(true)}>
-              <Plus className="size-4" strokeWidth={1.5} />
-              {t.addCat}
-            </Button>
-          </div>
-        </>
+        <CategoryBoard
+          groups={[
+            ...(watched.length > 0
+              ? [{ id: "watch", title: t.watch, sub: "", rows: watched, canAdd: false }]
+              : []),
+            ...ordered
+              .filter((category) => category.name !== "辅料")
+              .map((category) => ({
+                id: category.id,
+                title: shownName(category.name, category.en, lang),
+                sub: lang === "en" ? category.name : category.en,
+                rows: visible.filter((row) => row.dish.categoryId === category.id),
+                canAdd: true,
+              })),
+          ]}
+          shelf={shelf}
+          onShelf={setShelf}
+          onOpen={(dishId) => setStudio({ mode: "dish", dishId })}
+          onNew={(categoryId) => setStudio({ mode: "new", categoryId })}
+          onAddCat={() => setCatsOpen(true)}
+          onLibrary={() => setLibraryOpen(true)}
+          onExport={() => downloadCostWorkbook(buildCostRows(dishes, categories, materials))}
+          onImport={() => fileRef.current?.click()}
+        />
       )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void onImport(file);
+        }}
+      />
 
       <footer className="px-4 py-8 text-xs text-faint sm:px-8">Bund House</footer>
 
@@ -533,7 +534,12 @@ function Stat({
   return (
     <div className="bg-bg-elev px-3 py-4">
       <p className="text-xs text-faint">{label}</p>
-      <p className={cn("mt-1 font-sans text-2xl font-semibold tabular-nums tracking-normal", toneText[tone])}>
+      <p
+        className={cn(
+          "mt-1 font-sans text-2xl font-semibold tabular-nums tracking-normal",
+          toneText[tone],
+        )}
+      >
         {value}
         {hint && <span className="ml-1 font-sans text-sm text-faint">{hint}</span>}
       </p>
@@ -547,73 +553,6 @@ function sortCategories(list: Category[]) {
     if (b.name === "辅料") return -1;
     return a.order - b.order;
   });
-}
-
-function CategoryRow({
-  title,
-  en,
-  count,
-  open,
-  onToggle,
-  onAdd,
-  asking,
-  askNote,
-  onAsk,
-  onConfirm,
-  onCancel,
-  children,
-}: {
-  title: string;
-  en: string;
-  count: number;
-  open?: boolean;
-  onToggle?: () => void;
-  onAdd?: () => void;
-  asking?: boolean;
-  askNote?: string;
-  onAsk?: () => void;
-  onConfirm?: () => void;
-  onCancel?: () => void;
-  children: ReactNode;
-}) {
-  const { t } = useLang();
-  return (
-    <section className="border-b border-line">
-      <div className="flex items-center gap-2 px-4 py-2 sm:px-8">
-        <button type="button" onClick={onToggle} className="min-w-0 flex-1 py-1 text-left">
-          <span className="font-semibold text-fg">{title}</span>
-          {en ? <span className="ml-2 text-xs text-muted">{en}</span> : null}
-        </button>
-        <span className="text-sm tabular-nums text-faint">{t.count(count)}</span>
-        {onAsk ? (
-          <button type="button" aria-label={t.deleteCat(title)} onClick={onAsk} className="grid size-9 place-items-center text-faint">
-            <X className="size-4" strokeWidth={1.5} />
-          </button>
-        ) : null}
-        {onAdd ? (
-          <button type="button" aria-label={t.add} onClick={onAdd} className="grid size-9 place-items-center text-faint">
-            <Plus className="size-4" strokeWidth={1.5} />
-          </button>
-        ) : null}
-      </div>
-      {asking ? (
-        <div className="flex flex-wrap items-center gap-2 px-4 pb-2 sm:px-8">
-          <span className="text-sm text-muted">{askNote}</span>
-          <button type="button" className="h-9 rounded-md border border-bad px-3 text-sm text-bad" onClick={onConfirm}>
-            {t.yesDelete}
-          </button>
-          <button type="button" className="h-9 rounded-md border border-line px-3 text-sm text-muted" onClick={onCancel}>
-            {t.cancel}
-          </button>
-        </div>
-      ) : null}
-      {open ? (
-        <div className="max-h-72 overflow-auto px-4 pb-2 sm:px-8">
-          <div className="min-w-[36rem]">{children}</div>
-        </div>
-      ) : null}
-    </section>
-  );
 }
 
 type CardRow = {
@@ -639,8 +578,12 @@ function DishLine({
   note?: string;
 }) {
   const { lang, t } = useLang();
-  const [cost, setCost] = useState(row.stats.cost == null ? "" : String(Math.round(row.stats.cost)));
-  const [sale, setSale] = useState(row.stats.sale == null ? "" : String(Math.round(row.stats.sale)));
+  const [cost, setCost] = useState(
+    row.stats.cost == null ? "" : String(Math.round(row.stats.cost)),
+  );
+  const [sale, setSale] = useState(
+    row.stats.sale == null ? "" : String(Math.round(row.stats.sale)),
+  );
   useEffect(() => {
     setCost(row.stats.cost == null ? "" : String(Math.round(row.stats.cost)));
     setSale(row.stats.sale == null ? "" : String(Math.round(row.stats.sale)));
@@ -649,7 +592,9 @@ function DishLine({
     <div className={lineGrid}>
       <button type="button" onClick={onOpen} className="min-w-0 truncate text-left text-sm text-fg">
         {shownName(row.dish.name, row.dish.nameEn, lang)}
-        {row.dish.listed === false ? <span className="ml-2 text-xs text-bad">{t.offShelf}</span> : null}
+        {row.dish.listed === false ? (
+          <span className="ml-2 text-xs text-bad">{t.offShelf}</span>
+        ) : null}
         {note ? <span className="ml-2 text-xs text-muted">{note}</span> : null}
       </button>
       <Input
@@ -668,7 +613,9 @@ function DishLine({
         onChange={(e) => setSale(e.target.value)}
         onBlur={() => onPrice?.(cost, sale)}
       />
-      <span className={cn("text-right text-xs tabular-nums", toneText[marginTone(row.stats.margin)])}>
+      <span
+        className={cn("text-right text-xs tabular-nums", toneText[marginTone(row.stats.margin)])}
+      >
         {formatPct(row.stats.margin)}
       </span>
       {categories && onMove ? (
@@ -693,8 +640,10 @@ function DishLine({
   );
 }
 
-const ingredientGrid = "grid grid-cols-[5.5rem_minmax(8rem,1.4fr)_5rem_7rem_7rem] items-center gap-2 border-b border-line py-2";
-const lineGrid = "grid grid-cols-[minmax(7rem,1.4fr)_6.5rem_6.5rem_4rem_6.5rem] items-center gap-2 border-b border-line py-1.5";
+const ingredientGrid =
+  "grid grid-cols-[5.5rem_minmax(8rem,1.4fr)_5rem_7rem_7rem] items-center gap-2 border-b border-line py-2";
+const lineGrid =
+  "grid grid-cols-[minmax(7rem,1.4fr)_6.5rem_6.5rem_4rem_6.5rem] items-center gap-2 border-b border-line py-1.5";
 
 function LineHead() {
   const { t } = useLang();
@@ -773,7 +722,14 @@ function ProfileMenu({
           >
             {t.library}
           </MenuButton>
-          <MenuButton onClick={() => { setOpen(false); onReplay(); }}>{t.replay}</MenuButton>
+          <MenuButton
+            onClick={() => {
+              setOpen(false);
+              onReplay();
+            }}
+          >
+            {t.replay}
+          </MenuButton>
           <MenuButton
             onClick={() => {
               if (!armReset) {
@@ -833,7 +789,11 @@ function moneyOrDash(n: number | null | undefined) {
 
 function MenuButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex h-11 w-full items-center rounded-md px-3 text-left text-sm text-fg hover:bg-bg-soft">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-11 w-full items-center rounded-md px-3 text-left text-sm text-fg hover:bg-bg-soft"
+    >
       {children}
     </button>
   );
@@ -868,9 +828,16 @@ function CategoryManager({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="cat-title" className="text-2xl font-semibold">{t.categories}</h2>
+            <h2 id="cat-title" className="text-2xl font-semibold">
+              {t.categories}
+            </h2>
           </div>
-          <button type="button" aria-label={t.close} onClick={onClose} className="grid size-11 place-items-center">
+          <button
+            type="button"
+            aria-label={t.close}
+            onClick={onClose}
+            className="grid size-11 place-items-center"
+          >
             <X className="size-5" strokeWidth={1.5} />
           </button>
         </div>
@@ -904,8 +871,18 @@ function CategoryManager({ onClose }: { onClose: () => void }) {
             setError(null);
           }}
         >
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.newCat} aria-label={t.newCat} />
-          <Input value={en} onChange={(e) => setEn(e.target.value)} placeholder={t.catEn} aria-label={t.catEn} />
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t.newCat}
+            aria-label={t.newCat}
+          />
+          <Input
+            value={en}
+            onChange={(e) => setEn(e.target.value)}
+            placeholder={t.catEn}
+            aria-label={t.catEn}
+          />
           <Button type="submit">{t.addCat}</Button>
         </form>
         {error && <p className="mt-2 text-sm text-bad">{error}</p>}
@@ -978,11 +955,19 @@ function CatRow({
             {count > 0 && !fallback ? ` ${t.catHasDishes}` : ""}
           </span>
           {count === 0 || fallback ? (
-            <button type="button" className="h-9 rounded-md border border-bad px-3 text-sm text-bad" onClick={() => onRemove(cat.id)}>
+            <button
+              type="button"
+              className="h-9 rounded-md border border-bad px-3 text-sm text-bad"
+              onClick={() => onRemove(cat.id)}
+            >
               {t.yesDelete}
             </button>
           ) : null}
-          <button type="button" className="h-9 rounded-md border border-line px-3 text-sm text-muted" onClick={() => setAsk(false)}>
+          <button
+            type="button"
+            className="h-9 rounded-md border border-line px-3 text-sm text-muted"
+            onClick={() => setAsk(false)}
+          >
             {t.cancel}
           </button>
         </div>
@@ -1020,7 +1005,7 @@ function Studio({
   const [name, setName] = useState(dish?.name ?? "");
   const [nameEn, setNameEn] = useState(dish?.nameEn ?? "");
   const [categoryId, setCategoryId] = useState(
-    dish?.categoryId ?? (state.mode === "new" ? state.categoryId : categories[0]?.id ?? ""),
+    dish?.categoryId ?? (state.mode === "new" ? state.categoryId : (categories[0]?.id ?? "")),
   );
   const [marginText, setMarginText] = useState(() => {
     const v = dish ? latestVersion(dish) : undefined;
@@ -1078,7 +1063,10 @@ function Studio({
   const costDirty = !showDraft && costText.trim() !== savedCostText;
   const saleDirty = !showDraft && saleText.trim() !== savedSaleText;
   const marginDirty =
-    !showDraft && viewed != null && marginNow != null && Math.abs(marginNow - viewed.margin) > 0.0005;
+    !showDraft &&
+    viewed != null &&
+    marginNow != null &&
+    Math.abs(marginNow - viewed.margin) > 0.0005;
   const live = liveStats(materials, marginNow, draftLines, costText);
   const activeStats = showDraft || costDirty || marginDirty ? live : viewStats;
   const analysis = showDraft
@@ -1092,7 +1080,9 @@ function Studio({
         cost: costText,
         materials,
         base: creating ? null : (viewed ?? null),
-        baseMeta: dish ? { name: dish.name, nameEn: dish.nameEn, categoryId: dish.categoryId } : null,
+        baseMeta: dish
+          ? { name: dish.name, nameEn: dish.nameEn, categoryId: dish.categoryId }
+          : null,
       })
     : null;
   const footerHint = errText(error || analysis?.error || null, t);
@@ -1172,17 +1162,22 @@ function Studio({
     onSaved(t.savedVersion(next));
   };
 
-
   const shownLines = editing || creating ? lines : (viewed?.lines ?? []);
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-bg">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-8">
-        <button type="button" onClick={onClose} className="inline-flex h-11 items-center gap-1 text-sm text-muted">
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-11 items-center gap-1 text-sm text-muted"
+        >
           <ChevronLeft className="size-5" strokeWidth={1.5} />
           {t.back}
         </button>
-        <p className="text-xs text-faint">{creating ? t.newDish : t.version(viewed?.version ?? 1)}</p>
+        <p className="text-xs text-faint">
+          {creating ? t.newDish : t.version(viewed?.version ?? 1)}
+        </p>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8">
@@ -1191,15 +1186,27 @@ function Studio({
             <div className="grid gap-3">
               <label className="block">
                 <span className="mb-1 block text-xs text-faint">{t.dishName}</span>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.dishName} />
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t.dishName}
+                />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs text-faint">{t.nameEn}</span>
-                <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder={t.optional} />
+                <Input
+                  value={nameEn}
+                  onChange={(e) => setNameEn(e.target.value)}
+                  placeholder={t.optional}
+                />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs text-faint">{t.categories}</span>
-                <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label={t.categories}>
+                <Select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  aria-label={t.categories}
+                >
                   {ordered.map((c) => (
                     <option key={c.id} value={c.id}>
                       {shownName(c.name, c.en, lang)}
@@ -1223,17 +1230,29 @@ function Studio({
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
-                <h1 className="mt-1 text-3xl font-semibold text-fg">{shownName(dish.name, dish.nameEn, lang)}</h1>
+                <h1 className="mt-1 text-3xl font-semibold text-fg">
+                  {shownName(dish.name, dish.nameEn, lang)}
+                </h1>
                 <div className="mt-3 flex items-center gap-2">
-                  <span className={dish.listed === false ? "text-sm text-bad" : "text-sm text-good"}>{dish.listed === false ? t.offShelf : t.onSale}</span>
-                  <Button variant="line" size="sm" onClick={() => setListed(dish.id, dish.listed === false)}>
+                  <span
+                    className={dish.listed === false ? "text-sm text-bad" : "text-sm text-good"}
+                  >
+                    {dish.listed === false ? t.offShelf : t.onSale}
+                  </span>
+                  <Button
+                    variant="line"
+                    size="sm"
+                    onClick={() => setListed(dish.id, dish.listed === false)}
+                  >
                     {dish.listed === false ? t.putUp : t.takeDown}
                   </Button>
                 </div>
                 {lang === "en" && dish.name && dish.name !== dish.nameEn ? (
                   <p className="mt-1 text-sm text-muted">{dish.name}</p>
                 ) : null}
-                {lang === "zh" && dish.nameEn ? <p className="mt-1 text-sm text-muted">{dish.nameEn}</p> : null}
+                {lang === "zh" && dish.nameEn ? (
+                  <p className="mt-1 text-sm text-muted">{dish.nameEn}</p>
+                ) : null}
                 {dish.description && <p className="mt-2 text-sm text-muted">{dish.description}</p>}
                 {dish.tags.length > 0 && (
                   <p className="mt-2 text-xs text-muted">
@@ -1307,7 +1326,11 @@ function Studio({
               {t.save}
             </Button>
           ) : null}
-          {dish && !creating ? <DishFiles dishId={dish.id} /> : <p className="mt-4 text-sm text-muted">{t.filesAfterSave}</p>}
+          {dish && !creating ? (
+            <DishFiles dishId={dish.id} />
+          ) : (
+            <p className="mt-4 text-sm text-muted">{t.filesAfterSave}</p>
+          )}
 
           {!creating && dish && (
             <div className="row-scroll mt-6 flex gap-2 overflow-x-auto pb-1">
@@ -1350,9 +1373,7 @@ function Studio({
             </div>
           )}
 
-          {(editing || creating) && (
-            <p className="mt-4 text-sm text-muted">{t.editHint}</p>
-          )}
+          {(editing || creating) && <p className="mt-4 text-sm text-muted">{t.editHint}</p>}
 
           {viewed && !editing && viewed.note && (
             <p className="mt-4 text-sm text-muted">{viewed.note}</p>
@@ -1373,7 +1394,10 @@ function Studio({
           </div>
           {dish && dish.ways.length > 0 && !editing && (
             <p className="mt-2 text-sm text-muted">
-              {t.ways} {dish.ways.map((way) => (lang === "en" ? way.en || way.zh : way.zh)).join(lang === "en" ? ", " : "、")}
+              {t.ways}{" "}
+              {dish.ways
+                .map((way) => (lang === "en" ? way.en || way.zh : way.zh))
+                .join(lang === "en" ? ", " : "、")}
             </p>
           )}
 
@@ -1393,104 +1417,133 @@ function Studio({
           <p className="mt-1 text-sm text-muted">{t.amountRule}</p>
 
           <div className="mt-3 overflow-x-auto">
-          <ul className="mt-3 min-w-[36rem]">
-            <li className={`${ingredientGrid} text-xs text-faint`}>
-              <span>{t.code}</span>
-              <span>{t.ingredients}</span>
-              <span className="text-right">{t.qty}</span>
-              <span className="text-right">{t.unitPrice}</span>
-              <span className="text-right">{t.amount}</span>
-            </li>
-            {(editing || creating ? lines : shownLines).map((line) => {
-              const draft = editing || creating ? (line as DraftLine) : null;
-              const name = draft ? draft.name : (line as Ingredient).name;
-              const materialId = draft ? draft.materialId : (line as Ingredient).materialId;
-              const usage = draft ? parseNum(draft.usage) : (line as Ingredient).usage;
-              const linked = findMaterial({ materialId, name }, materials);
-              const amt = lineAmount(linked?.price ?? null, linked?.baseUnit ?? null, usage ?? Number.NaN);
-              const missing = Boolean(name.trim()) && (!linked || linked.price == null || !(linked.baseUnit && linked.baseUnit > 0));
-              if (draft) {
-                return (
-                  <li key={draft.id} className="mt-3 rounded-xl border border-line p-3">
-                    <div className="flex items-start gap-2">
-                      <label className="block min-w-0 flex-1">
-                        <span className="mb-1 block text-xs text-faint">{t.ingredient}</span>
-                        {linked?.code ? <span className="mb-1 block text-xs tabular-nums text-muted">{linked.code}</span> : null}
-                        <Input
-                          value={draft.name}
-                          list="material-names"
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            const hit = findMaterial({ materialId: null, name: next }, materials);
-                            updateLine(setLines, draft.id, { name: next, materialId: hit?.id ?? null });
-                          }}
-                          placeholder={t.ingredient}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        aria-label={t.removeLine}
-                        onClick={() => setAskLine(draft.id)}
-                        className="mt-5 grid size-11 shrink-0 place-items-center rounded-md border border-line text-faint"
-                      >
-                        <X className="size-4" strokeWidth={1.5} />
-                      </button>
-                    </div>
-                    {askLine === draft.id ? (
-                      <div className="mt-2 flex flex-wrap items-center justify-end gap-3 text-sm">
-                        <span className="text-muted">{t.confirmDeleteQ(draft.name || t.ingredient)}</span>
+            <ul className="mt-3 min-w-[36rem]">
+              <li className={`${ingredientGrid} text-xs text-faint`}>
+                <span>{t.code}</span>
+                <span>{t.ingredients}</span>
+                <span className="text-right">{t.qty}</span>
+                <span className="text-right">{t.unitPrice}</span>
+                <span className="text-right">{t.amount}</span>
+              </li>
+              {(editing || creating ? lines : shownLines).map((line) => {
+                const draft = editing || creating ? (line as DraftLine) : null;
+                const name = draft ? draft.name : (line as Ingredient).name;
+                const materialId = draft ? draft.materialId : (line as Ingredient).materialId;
+                const usage = draft ? parseNum(draft.usage) : (line as Ingredient).usage;
+                const linked = findMaterial({ materialId, name }, materials);
+                const amt = lineAmount(
+                  linked?.price ?? null,
+                  linked?.baseUnit ?? null,
+                  usage ?? Number.NaN,
+                );
+                const missing =
+                  Boolean(name.trim()) &&
+                  (!linked || linked.price == null || !(linked.baseUnit && linked.baseUnit > 0));
+                if (draft) {
+                  return (
+                    <li key={draft.id} className="mt-3 rounded-xl border border-line p-3">
+                      <div className="flex items-start gap-2">
+                        <label className="block min-w-0 flex-1">
+                          <span className="mb-1 block text-xs text-faint">{t.ingredient}</span>
+                          {linked?.code ? (
+                            <span className="mb-1 block text-xs tabular-nums text-muted">
+                              {linked.code}
+                            </span>
+                          ) : null}
+                          <Input
+                            value={draft.name}
+                            list="material-names"
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              const hit = findMaterial({ materialId: null, name: next }, materials);
+                              updateLine(setLines, draft.id, {
+                                name: next,
+                                materialId: hit?.id ?? null,
+                              });
+                            }}
+                            placeholder={t.ingredient}
+                          />
+                        </label>
                         <button
                           type="button"
-                          className="h-9 rounded-md border border-bad px-3 text-sm text-bad"
-                          onClick={() => {
-                            setLines((curr) => curr.filter((row) => row.id !== draft.id));
-                            setAskLine(null);
-                          }}
+                          aria-label={t.removeLine}
+                          onClick={() => setAskLine(draft.id)}
+                          className="mt-5 grid size-11 shrink-0 place-items-center rounded-md border border-line text-faint"
                         >
-                          {t.yesDelete}
-                        </button>
-                        <button type="button" className="h-9 rounded-md border border-line px-3 text-sm text-muted" onClick={() => setAskLine(null)}>
-                          {t.cancel}
+                          <X className="size-4" strokeWidth={1.5} />
                         </button>
                       </div>
-                    ) : null}
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <label className="block">
-                        <span className="mb-1 block text-xs text-faint">{t.qty}</span>
-                        <Input
-                          value={draft.usage}
-                          inputMode="decimal"
-                          onChange={(e) => updateLine(setLines, draft.id, { usage: e.target.value })}
-                        />
-                      </label>
-                      <div>
-                        <p className="mb-1 text-xs text-faint">{t.unitPrice}</p>
-                        <p className="flex h-11 items-center text-sm tabular-nums text-fg">
-                          {linked?.price != null ? formatMoney(linked.price) : "—"}
-                          <span className="ml-2 text-muted">
-                            / {linked?.baseUnit ?? "—"}
+                      {askLine === draft.id ? (
+                        <div className="mt-2 flex flex-wrap items-center justify-end gap-3 text-sm">
+                          <span className="text-muted">
+                            {t.confirmDeleteQ(draft.name || t.ingredient)}
                           </span>
-                        </p>
+                          <button
+                            type="button"
+                            className="h-9 rounded-md border border-bad px-3 text-sm text-bad"
+                            onClick={() => {
+                              setLines((curr) => curr.filter((row) => row.id !== draft.id));
+                              setAskLine(null);
+                            }}
+                          >
+                            {t.yesDelete}
+                          </button>
+                          <button
+                            type="button"
+                            className="h-9 rounded-md border border-line px-3 text-sm text-muted"
+                            onClick={() => setAskLine(null)}
+                          >
+                            {t.cancel}
+                          </button>
+                        </div>
+                      ) : null}
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <label className="block">
+                          <span className="mb-1 block text-xs text-faint">{t.qty}</span>
+                          <Input
+                            value={draft.usage}
+                            inputMode="decimal"
+                            onChange={(e) =>
+                              updateLine(setLines, draft.id, { usage: e.target.value })
+                            }
+                          />
+                        </label>
+                        <div>
+                          <p className="mb-1 text-xs text-faint">{t.unitPrice}</p>
+                          <p className="flex h-11 items-center text-sm tabular-nums text-fg">
+                            {linked?.price != null ? formatMoney(linked.price) : "—"}
+                            <span className="ml-2 text-muted">/ {linked?.baseUnit ?? "—"}</span>
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <p className="mt-2 text-right text-sm text-muted tabular-nums">
-                      {missing ? t.checkName : `${t.amount} ${amt == null ? "—" : formatMoney(amt)}`}
-                    </p>
+                      <p className="mt-2 text-right text-sm text-muted tabular-nums">
+                        {missing
+                          ? t.checkName
+                          : `${t.amount} ${amt == null ? "—" : formatMoney(amt)}`}
+                      </p>
+                    </li>
+                  );
+                }
+                const fixed = line as Ingredient;
+                return (
+                  <li key={fixed.id} className={ingredientGrid}>
+                    <span className="truncate text-xs tabular-nums text-muted">
+                      {linked?.code || "—"}
+                    </span>
+                    <span className="truncate text-sm text-fg">{fixed.name}</span>
+                    <span className="text-right text-sm tabular-nums">
+                      {usage == null ? "—" : formatQty(usage)}
+                    </span>
+                    <span className="text-right text-sm tabular-nums">
+                      {linked?.price != null ? formatMoney(linked.price) : "—"}
+                    </span>
+                    <span className="text-right text-sm tabular-nums">
+                      {amt == null ? "—" : formatMoney(amt)}
+                    </span>
                   </li>
                 );
-              }
-              const fixed = line as Ingredient;
-              return (
-                <li key={fixed.id} className={ingredientGrid}>
-                  <span className="truncate text-xs tabular-nums text-muted">{linked?.code || "—"}</span>
-                  <span className="truncate text-sm text-fg">{fixed.name}</span>
-                  <span className="text-right text-sm tabular-nums">{usage == null ? "—" : formatQty(usage)}</span>
-                  <span className="text-right text-sm tabular-nums">{linked?.price != null ? formatMoney(linked.price) : "—"}</span>
-                  <span className="text-right text-sm tabular-nums">{amt == null ? "—" : formatMoney(amt)}</span>
-                </li>
-              );
-            })}
-          </ul>
+              })}
+            </ul>
           </div>
           {shownLines.length === 0 && !editing && !creating && (
             <p className="mt-3 text-sm text-muted">{t.noIngredients}</p>
@@ -1532,7 +1585,11 @@ function Studio({
                   </Button>
                 </div>
               ) : (
-                <button type="button" className="text-sm text-faint" onClick={() => setConfirmDelete(true)}>
+                <button
+                  type="button"
+                  className="text-sm text-faint"
+                  onClick={() => setConfirmDelete(true)}
+                >
                   {t.removeDish}
                 </button>
               )}
@@ -1563,8 +1620,17 @@ function Studio({
                     {t.discard}
                   </Button>
                 )}
-                <Button className="flex-1" size="lg" onClick={save} disabled={Boolean(analysis?.error)}>
-                  {creating ? t.save : analysis?.costChanged ? t.saveVersion((dish?.versions.length ?? 0) + 1) : t.save}
+                <Button
+                  className="flex-1"
+                  size="lg"
+                  onClick={save}
+                  disabled={Boolean(analysis?.error)}
+                >
+                  {creating
+                    ? t.save
+                    : analysis?.costChanged
+                      ? t.saveVersion((dish?.versions.length ?? 0) + 1)
+                      : t.save}
                 </Button>
               </>
             ) : (
@@ -1623,7 +1689,12 @@ function draftIngredients(lines: DraftLine[], materials: Material[]): Ingredient
     });
 }
 
-function liveStats(materials: Material[], margin: number | null, lines: DraftLine[], costStr: string): VersionStats {
+function liveStats(
+  materials: Material[],
+  margin: number | null,
+  lines: DraftLine[],
+  costStr: string,
+): VersionStats {
   const parsed = draftIngredients(lines, materials);
   const resolved = resolveCost(costStr, parsed, materials);
   const cost = resolved.effective;
@@ -1651,7 +1722,8 @@ function resolveCost(
   const n = parseNum(text);
   if (n == null || n < 0) return { error: "cost", enteredCost: null, effective: null };
   const typed = round2(n);
-  if (lineCost != null && typed === lineCost) return { error: null, enteredCost: null, effective: lineCost };
+  if (lineCost != null && typed === lineCost)
+    return { error: null, enteredCost: null, effective: lineCost };
   return { error: null, enteredCost: typed, effective: typed };
 }
 
@@ -1666,7 +1738,12 @@ function analyzeDraft(args: {
   materials: Material[];
   base: CostVersion | null;
   baseMeta: { name: string; nameEn: string; categoryId: string } | null;
-}): { error: string | null; costChanged: boolean; metaChanged: boolean; parsed: NewVersionInput | null } {
+}): {
+  error: string | null;
+  costChanged: boolean;
+  metaChanged: boolean;
+  parsed: NewVersionInput | null;
+} {
   const name = args.name.trim();
   const fail = (error: string) => ({ error, costChanged: false, metaChanged: false, parsed: null });
   if (!name) return fail("name");
@@ -1721,7 +1798,10 @@ function MaterialCatEditor({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center bg-void/70 sm:items-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-30 flex items-end justify-center bg-void/70 sm:items-center"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-labelledby="mat-cat-title"
@@ -1729,52 +1809,64 @@ function MaterialCatEditor({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-start justify-between gap-3 p-4 pb-0">
-          <h2 id="mat-cat-title" className="text-2xl font-semibold">{t.editMatCats}</h2>
-          <button type="button" aria-label={t.close} onClick={onClose} className="grid size-11 place-items-center">
+          <h2 id="mat-cat-title" className="text-2xl font-semibold">
+            {t.editMatCats}
+          </h2>
+          <button
+            type="button"
+            aria-label={t.close}
+            onClick={onClose}
+            className="grid size-11 place-items-center"
+          >
             <X className="size-5" strokeWidth={1.5} />
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4 pt-2">
-        <p className="mt-2 text-sm text-muted">{t.matCatsHint}</p>
-        <ul className="mt-4">
-          {cats.map((cat) => (
-            <MaterialCatRow
-              key={cat}
-              name={cat}
-              asking={ask === cat}
-              onAsk={() => setAsk(cat)}
-              onCancel={() => setAsk(null)}
-              onRename={(next) => {
-                const ok = renameMaterialCategory(cat, next);
-                if (!ok) setError(t.catExists);
-                else setError(null);
-                return ok;
-              }}
-              onRemove={() => {
-                const ok = removeMaterialCategory(cat);
-                if (!ok) setError(t.cannot);
-                setAsk(null);
-              }}
+          <p className="mt-2 text-sm text-muted">{t.matCatsHint}</p>
+          <ul className="mt-4">
+            {cats.map((cat) => (
+              <MaterialCatRow
+                key={cat}
+                name={cat}
+                asking={ask === cat}
+                onAsk={() => setAsk(cat)}
+                onCancel={() => setAsk(null)}
+                onRename={(next) => {
+                  const ok = renameMaterialCategory(cat, next);
+                  if (!ok) setError(t.catExists);
+                  else setError(null);
+                  return ok;
+                }}
+                onRemove={() => {
+                  const ok = removeMaterialCategory(cat);
+                  if (!ok) setError(t.cannot);
+                  setAsk(null);
+                }}
+              />
+            ))}
+          </ul>
+          <form
+            className="mt-4 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const ok = addMaterialCategory(name);
+              if (!ok) {
+                setError(name.trim() ? t.catExists : t.needName);
+                return;
+              }
+              setName("");
+              setError(null);
+            }}
+          >
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t.newCat}
+              aria-label={t.newCat}
             />
-          ))}
-        </ul>
-        <form
-          className="mt-4 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const ok = addMaterialCategory(name);
-            if (!ok) {
-              setError(name.trim() ? t.catExists : t.needName);
-              return;
-            }
-            setName("");
-            setError(null);
-          }}
-        >
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.newCat} aria-label={t.newCat} />
-          <Button type="submit">{t.addOne}</Button>
-        </form>
-        {error ? <p className="mt-2 text-sm text-bad">{error}</p> : null}
+            <Button type="submit">{t.addOne}</Button>
+          </form>
+          {error ? <p className="mt-2 text-sm text-bad">{error}</p> : null}
         </div>
       </div>
     </div>
@@ -1813,17 +1905,30 @@ function MaterialCatRow({
             if (e.key === "Enter") e.currentTarget.blur();
           }}
         />
-        <button type="button" aria-label={t.deleteCat(name)} onClick={onAsk} className="grid size-11 shrink-0 place-items-center text-faint">
+        <button
+          type="button"
+          aria-label={t.deleteCat(name)}
+          onClick={onAsk}
+          className="grid size-11 shrink-0 place-items-center text-faint"
+        >
           <X className="size-4" strokeWidth={1.5} />
         </button>
       </div>
       {asking ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted">{t.confirmDeleteQ(name)}</span>
-          <button type="button" className="h-9 rounded-md border border-bad px-3 text-sm text-bad" onClick={onRemove}>
+          <button
+            type="button"
+            className="h-9 rounded-md border border-bad px-3 text-sm text-bad"
+            onClick={onRemove}
+          >
             {t.yesDelete}
           </button>
-          <button type="button" className="h-9 rounded-md border border-line px-3 text-sm text-muted" onClick={onCancel}>
+          <button
+            type="button"
+            className="h-9 rounded-md border border-line px-3 text-sm text-muted"
+            onClick={onCancel}
+          >
             {t.cancel}
           </button>
         </div>
@@ -1869,7 +1974,11 @@ function LibraryPanel({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-bg">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-8">
-        <button type="button" onClick={onClose} className="inline-flex h-11 items-center gap-1 text-sm text-muted">
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-11 items-center gap-1 text-sm text-muted"
+        >
           <ChevronLeft className="size-5" strokeWidth={1.5} />
           {t.back}
         </button>
@@ -1881,14 +1990,24 @@ function LibraryPanel({ onClose }: { onClose: () => void }) {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8">
         <div className="mx-auto w-full max-w-3xl">
           <p className="text-sm text-muted">{t.libraryHint}</p>
-          <Input className="mt-4" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.searchMatPh} aria-label={t.search} />
+          <Input
+            className="mt-4"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t.searchMatPh}
+            aria-label={t.search}
+          />
           <div className="row-scroll mt-3 flex gap-2 overflow-x-auto pb-1">
             {cats.map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => setCat(item)}
-                className={item === cat ? "h-9 shrink-0 rounded-md bg-fg px-3 text-sm text-ink" : "h-9 shrink-0 rounded-md border border-line px-3 text-sm text-muted"}
+                className={
+                  item === cat
+                    ? "h-9 shrink-0 rounded-md bg-fg px-3 text-sm text-ink"
+                    : "h-9 shrink-0 rounded-md border border-line px-3 text-sm text-muted"
+                }
               >
                 {item}
               </button>
@@ -1932,16 +2051,39 @@ function LibraryPanel({ onClose }: { onClose: () => void }) {
                     aria-label={t.code}
                     className="tabular-nums"
                   />
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.material} aria-label={t.material} />
-                  <Select value={cat} onChange={(e) => setCat(e.target.value)} aria-label={t.materialCat}>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t.material}
+                    aria-label={t.material}
+                  />
+                  <Select
+                    value={cat}
+                    onChange={(e) => setCat(e.target.value)}
+                    aria-label={t.materialCat}
+                  >
                     {cats.map((item) => (
                       <option key={item} value={item}>
                         {item}
                       </option>
                     ))}
                   </Select>
-                  <Input value={base} onChange={(e) => setBase(e.target.value)} placeholder={t.baseUnit} inputMode="decimal" aria-label={t.baseUnit} className="text-right tabular-nums" />
-                  <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t.unitPrice} inputMode="decimal" aria-label={t.unitPrice} className="text-right tabular-nums" />
+                  <Input
+                    value={base}
+                    onChange={(e) => setBase(e.target.value)}
+                    placeholder={t.baseUnit}
+                    inputMode="decimal"
+                    aria-label={t.baseUnit}
+                    className="text-right tabular-nums"
+                  />
+                  <Input
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder={t.unitPrice}
+                    inputMode="decimal"
+                    aria-label={t.unitPrice}
+                    className="text-right tabular-nums"
+                  />
                   <Button type="submit" className="px-2 text-sm" aria-label={t.insert}>
                     {t.insert}
                   </Button>
@@ -1988,7 +2130,10 @@ function MaterialRow({
   item: Material;
   cats: string[];
   used: number;
-  onChange: (id: string, patch: Partial<Pick<Material, "category" | "name" | "code" | "baseUnit" | "price">>) => void;
+  onChange: (
+    id: string,
+    patch: Partial<Pick<Material, "category" | "name" | "code" | "baseUnit" | "price">>,
+  ) => void;
   onRemove: (id: string) => void;
 }) {
   const { t } = useLang();
@@ -2040,7 +2185,12 @@ function MaterialRow({
           onBlur={() => onChange(item.id, { price: parseNum(price) })}
           className="text-right tabular-nums"
         />
-        <button type="button" aria-label={t.removeLine} onClick={() => setAsk(true)} className="grid size-11 place-items-center rounded-md border border-line text-faint">
+        <button
+          type="button"
+          aria-label={t.removeLine}
+          onClick={() => setAsk(true)}
+          className="grid size-11 place-items-center rounded-md border border-line text-faint"
+        >
           <X className="size-4" strokeWidth={1.5} />
         </button>
       </div>
@@ -2050,10 +2200,18 @@ function MaterialRow({
             {t.confirmDeleteQ(name || item.name)}
             {used > 0 ? ` ${t.usedIn(used)}` : ""}
           </span>
-          <button type="button" className="h-9 rounded-md border border-bad px-3 text-sm text-bad" onClick={() => onRemove(item.id)}>
+          <button
+            type="button"
+            className="h-9 rounded-md border border-bad px-3 text-sm text-bad"
+            onClick={() => onRemove(item.id)}
+          >
             {t.yesDelete}
           </button>
-          <button type="button" className="h-9 rounded-md border border-line px-3 text-sm text-muted" onClick={() => setAsk(false)}>
+          <button
+            type="button"
+            className="h-9 rounded-md border border-line px-3 text-sm text-muted"
+            onClick={() => setAsk(false)}
+          >
             {t.cancel}
           </button>
         </div>
@@ -2066,9 +2224,843 @@ function dishesUsing(material: Material, dishes: Dish[]) {
   const name = material.name.trim().toLowerCase();
   return dishes.filter((dish) => {
     const version = latestVersion(dish);
-    return version?.lines.some((line) => line.materialId === material.id || line.name.trim().toLowerCase() === name);
+    return version?.lines.some(
+      (line) => line.materialId === material.id || line.name.trim().toLowerCase() === name,
+    );
   }).length;
 }
 
-const materialGrid = "grid grid-cols-[6.5rem_minmax(8rem,1.4fr)_7.5rem_5.5rem_6.5rem_4.5rem] items-center gap-2";
+const materialGrid =
+  "grid grid-cols-[6.5rem_minmax(8rem,1.4fr)_7.5rem_5.5rem_6.5rem_4.5rem] items-center gap-2";
 
+type BoardGroup = { id: string; title: string; sub: string; rows: CardRow[]; canAdd: boolean };
+
+/**
+ * One recipe line: 食材 | 单位 | 单价 | 用量 | 金额 | ×.
+ * On a phone it is two rows (name, delete / unit, price, usage, amount). Nothing in a card scrolls.
+ */
+const boardGrid =
+  "grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.35fr)_minmax(0,0.75fr)_minmax(0,1.1fr)_1.75rem] items-center gap-x-1 border-b border-line/70 py-0.5 sm:grid-cols-[minmax(0,1fr)_3.5rem_6rem_3.5rem_5.5rem_1.75rem]";
+
+const toneBorder: Record<MarginTone, string> = {
+  good: "border-l-good",
+  watch: "border-l-tan",
+  tight: "border-l-bad",
+  none: "border-l-line",
+};
+
+const toneBadge: Record<MarginTone, string> = {
+  good: "bg-good/10 text-good",
+  watch: "bg-tan/10 text-tan",
+  tight: "bg-bad/10 text-bad",
+  none: "bg-bg-soft text-muted",
+};
+
+function plainNum(n: number | null | undefined) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return Math.round(n).toLocaleString("id-ID");
+}
+
+function useHeaderHeight() {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const header = document.querySelector("header");
+    if (!header) return;
+    const measure = () => setHeight(header.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+  return height;
+}
+
+type BoardSort = "default" | "marginLow" | "marginHigh" | "costHigh" | "name";
+
+function CategoryBoard({
+  groups,
+  shelf,
+  onShelf,
+  onOpen,
+  onNew,
+  onAddCat,
+  onLibrary,
+  onExport,
+  onImport,
+}: {
+  groups: BoardGroup[];
+  shelf: "on" | "off" | "all";
+  onShelf: (next: "on" | "off" | "all") => void;
+  onOpen: (dishId: string) => void;
+  onNew: (categoryId: string) => void;
+  onAddCat: () => void;
+  onLibrary: () => void;
+  onExport: () => void;
+  onImport: () => void;
+}) {
+  const { lang, t } = useLang();
+  const materials = useCostStore((s) => s.materials);
+  const editVersion = useCostStore((s) => s.editVersion);
+  const [pick, setPick] = useState<string | null>(null);
+  const [find, setFind] = useState("");
+  const [sort, setSort] = useState<BoardSort>("default");
+  const [unify, setUnify] = useState<string | null>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+  const headerH = useHeaderHeight();
+  const active =
+    groups.find((group) => group.id === pick) ??
+    groups.find((group) => group.id !== "watch" && group.rows.length > 0) ??
+    groups[0];
+
+  const choose = (id: string) => {
+    setPick(id);
+    setFind("");
+    setUnify(null);
+    const box = topRef.current;
+    if (!box) return;
+    const top = box.getBoundingClientRect().top + window.scrollY - headerH - 8;
+    if (window.scrollY > top) window.scrollTo({ top, behavior: "smooth" });
+  };
+
+  if (!active) return null;
+
+  const needle = find.trim().toLowerCase();
+  const rows = active.rows
+    .filter((row) => {
+      if (!needle) return true;
+      const blob = `${row.dish.name} ${row.dish.nameEn} ${row.version.lines.map((line) => line.name).join(" ")}`;
+      return blob.toLowerCase().includes(needle);
+    })
+    .sort((a, b) => {
+      if (sort === "marginLow") return (a.stats.margin ?? 9) - (b.stats.margin ?? 9);
+      if (sort === "marginHigh") return (b.stats.margin ?? -9) - (a.stats.margin ?? -9);
+      if (sort === "costHigh") return (b.stats.cost ?? 0) - (a.stats.cost ?? 0);
+      if (sort === "name") return a.dish.name.localeCompare(b.dish.name, "zh");
+      return 0;
+    });
+
+  const items = active.rows.reduce((sum, row) => sum + row.version.lines.length, 0);
+  const priced = active.rows.filter((row) => row.stats.margin != null);
+  const avgMargin = priced.length
+    ? priced.reduce((sum, row) => sum + (row.stats.margin ?? 0), 0) / priced.length
+    : null;
+  const costed = active.rows.filter((row) => row.stats.cost != null);
+  const avgCost = costed.length
+    ? costed.reduce((sum, row) => sum + (row.stats.cost ?? 0), 0) / costed.length
+    : null;
+
+  const applyUnify = () => {
+    const rate = parseMargin(unify ?? "");
+    if (rate == null) return;
+    for (const row of active.rows) editVersion(row.dish.id, { margin: rate });
+    setUnify(null);
+  };
+
+  const navItem = (selected: boolean) =>
+    cn(
+      "flex h-10 w-full items-center justify-between gap-3 rounded-md px-3 text-left text-sm whitespace-nowrap",
+      selected ? "bg-bg-soft font-semibold text-fg" : "text-muted hover:bg-bg-soft hover:text-fg",
+    );
+
+  return (
+    <div
+      ref={topRef}
+      className="px-4 pt-6 sm:px-8 md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-8"
+    >
+      <aside
+        className="md:self-start [@media(min-width:768px)_and_(min-height:760px)]:sticky"
+        style={{ top: headerH + 16 }}
+      >
+        <p className="px-3 text-xs text-faint max-md:hidden">{t.workbench}</p>
+        <button
+          type="button"
+          onClick={onLibrary}
+          className={cn(navItem(false), "mt-1 max-md:hidden")}
+        >
+          <span>{t.library}</span>
+        </button>
+        <p className="mt-5 px-3 text-xs text-faint max-md:hidden">{t.dishCats}</p>
+        <nav aria-label={t.dishCats} className="mt-1 flex flex-wrap gap-2 md:block md:space-y-0.5">
+          {groups.map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              aria-current={group.id === active.id ? "true" : undefined}
+              onClick={() => choose(group.id)}
+              className={cn(
+                navItem(group.id === active.id),
+                "max-md:h-9 max-md:w-auto max-md:border max-md:border-line",
+                group.id === active.id && "max-md:border-fg",
+                group.id === "watch" && group.id !== active.id && "text-bad",
+              )}
+            >
+              <span>{group.title}</span>
+              <span className="text-xs font-normal tabular-nums text-faint">
+                {group.rows.length}
+              </span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={onAddCat}
+            className={cn(navItem(false), "max-md:h-9 max-md:w-auto justify-start text-faint")}
+          >
+            <Plus className="size-4" strokeWidth={1.5} />
+            {t.addCat}
+          </button>
+        </nav>
+      </aside>
+
+      <section className="mt-6 min-w-0 md:mt-0">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5">
+          <div className="min-w-0">
+            <h1 className="font-display text-3xl font-semibold text-fg sm:text-4xl">
+              {active.title}
+              {active.sub ? (
+                <span className="ml-3 font-sans text-sm font-normal text-faint">{active.sub}</span>
+              ) : null}
+            </h1>
+            <p className="mt-2 text-sm text-muted tabular-nums">
+              {t.catSummary(active.rows.length, items, formatPct(avgMargin), moneyOrDash(avgCost))}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="line" onClick={onImport}>
+              {t.importExcel}
+            </Button>
+            <Button onClick={onExport}>{t.exportExcel}</Button>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-bg-elev p-3">
+          <label className="relative min-w-0 flex-1 basis-56">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-faint"
+              strokeWidth={1.5}
+            />
+            <Input
+              value={find}
+              onChange={(e) => setFind(e.target.value)}
+              placeholder={t.searchInCat}
+              aria-label={t.searchInCat}
+              className="h-10 pl-9"
+            />
+          </label>
+          <Select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as BoardSort)}
+            aria-label={t.sortDefault}
+            className="h-10 w-auto"
+          >
+            <option value="default">{t.sortDefault}</option>
+            <option value="marginLow">{t.sortMarginLow}</option>
+            <option value="marginHigh">{t.sortMarginHigh}</option>
+            <option value="costHigh">{t.sortCostHigh}</option>
+            <option value="name">{t.sortName}</option>
+          </Select>
+          <Select
+            value={shelf}
+            onChange={(e) => onShelf(e.target.value as "on" | "off" | "all")}
+            aria-label={t.onSale}
+            className="h-10 w-auto"
+          >
+            <option value="on">{t.onSale}</option>
+            <option value="off">{t.offShelf}</option>
+            <option value="all">{t.allDishes}</option>
+          </Select>
+          <span className="flex items-center gap-3 text-xs text-muted">
+            <span className="flex items-center gap-1">
+              <span className="size-2 rounded-full bg-good" />
+              ≥65%
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="size-2 rounded-full bg-tan" />
+              55–65%
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="size-2 rounded-full bg-bad" />
+              &lt;55%
+            </span>
+          </span>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {unify == null ? (
+              active.rows.length > 0 ? (
+                <Button variant="line" onClick={() => setUnify("70")}>
+                  {t.unifyMargin}
+                </Button>
+              ) : null
+            ) : (
+              <span className="flex items-center gap-2">
+                <span className="relative">
+                  <Input
+                    autoFocus
+                    value={unify}
+                    onChange={(e) => setUnify(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") applyUnify();
+                      if (e.key === "Escape") setUnify(null);
+                    }}
+                    inputMode="decimal"
+                    aria-label={t.unifyMargin}
+                    className="h-10 w-20 pr-6 text-right tabular-nums"
+                  />
+                  <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-sm text-faint">
+                    %
+                  </span>
+                </span>
+                <Button onClick={applyUnify}>{t.unifyApply}</Button>
+                <Button variant="line" onClick={() => setUnify(null)}>
+                  {t.cancel}
+                </Button>
+              </span>
+            )}
+            {active.canAdd ? (
+              <Button onClick={() => onNew(active.id)}>
+                <Plus className="size-4" strokeWidth={1.5} />
+                {t.addDishBtn}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {rows.length === 0 ? (
+          <p className="mt-8 text-sm text-muted">{needle ? t.none : t.noDishesHere}</p>
+        ) : (
+          <div className="mt-5 grid items-start gap-5 min-[1400px]:grid-cols-2">
+            {rows.map((row) => (
+              <RecipeCard
+                key={row.dish.id}
+                row={row}
+                onOpen={() => onOpen(row.dish.id)}
+                lang={lang}
+              />
+            ))}
+          </div>
+        )}
+        <datalist id="board-materials">
+          {materials.map((item) => (
+            <option key={item.id} value={item.name}>
+              {item.code}
+            </option>
+          ))}
+        </datalist>
+      </section>
+    </div>
+  );
+}
+
+function RecipeCard({ row, onOpen, lang }: { row: CardRow; onOpen: () => void; lang: Lang }) {
+  const { t } = useLang();
+  const materials = useCostStore((s) => s.materials);
+  const editVersion = useCostStore((s) => s.editVersion);
+  const updateMaterial = useCostStore((s) => s.updateMaterial);
+  const addMaterial = useCostStore((s) => s.addMaterial);
+  const addDish = useCostStore((s) => s.addDish);
+  const removeDish = useCostStore((s) => s.removeDish);
+  const [adding, setAdding] = useState(false);
+  const [ask, setAsk] = useState<string | null>(null);
+  const [askDish, setAskDish] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [marginText, setMarginText] = useState("");
+  const [noteText, setNoteText] = useState(row.version.note);
+  const lines = row.version.lines;
+  const { stats } = row;
+  const tone = marginTone(stats.margin);
+
+  useEffect(() => {
+    setMarginText(stats.margin == null ? "" : String(round2(stats.margin * 100)));
+  }, [stats.margin]);
+  useEffect(() => {
+    setNoteText(row.version.note);
+  }, [row.version.note]);
+
+  const save = (next: Ingredient[]) => {
+    setNote(null);
+    editVersion(row.dish.id, { lines: next });
+  };
+  const patchLine = (id: string, patch: Partial<Ingredient>) =>
+    save(lines.map((line) => (line.id === id ? { ...line, ...patch } : line)));
+  const matFor = (line: Ingredient) => findMaterial(line, materials);
+
+  const ensureMaterial = (line: Ingredient, patch: { price?: number; baseUnit?: number }) => {
+    const mat = matFor(line);
+    if (mat) {
+      updateMaterial(mat.id, patch);
+      if (line.materialId !== mat.id) patchLine(line.id, { materialId: mat.id });
+      else setNote(null);
+      return;
+    }
+    if (!line.name.trim()) return;
+    addMaterial({
+      category: "其他",
+      name: line.name,
+      baseUnit: patch.baseUnit ?? 1,
+      price: patch.price ?? null,
+    });
+    const key = line.name.trim().toLowerCase();
+    const created = useCostStore
+      .getState()
+      .materials.find((item) => item.name.trim().toLowerCase() === key);
+    if (created) patchLine(line.id, { materialId: created.id });
+  };
+
+  const setCode = (line: Ingredient, text: string) => {
+    const code = text.trim();
+    if (!code) return;
+    const mat = matFor(line);
+    const hit = materials.find((item) => item.code.trim().toLowerCase() === code.toLowerCase());
+    if (hit && hit.id !== mat?.id) {
+      patchLine(line.id, { materialId: hit.id, name: hit.name });
+      return;
+    }
+    if (mat) {
+      updateMaterial(mat.id, { code });
+      return;
+    }
+    setNote(t.codeMissing);
+  };
+
+  const setName = (line: Ingredient, text: string) => {
+    const name = text.trim();
+    if (!name) return;
+    const hit = findMaterial({ materialId: null, name }, materials);
+    patchLine(line.id, { name, materialId: hit?.id ?? null });
+  };
+
+  const setUsage = (line: Ingredient, text: string) => {
+    const n = parseNum(text);
+    if (n == null || n < 0) return;
+    patchLine(line.id, { usage: n });
+  };
+
+  const setUnit = (line: Ingredient, text: string) => {
+    const n = parseNum(text);
+    if (n == null || !(n > 0)) return;
+    ensureMaterial(line, { baseUnit: n });
+  };
+
+  const setPrice = (line: Ingredient, text: string) => {
+    const n = parseNum(text);
+    if (n == null || n < 0) return;
+    ensureMaterial(line, { price: n });
+  };
+
+  const setAmount = (line: Ingredient, text: string) => {
+    const amount = parseNum(text);
+    if (amount == null || !(amount > 0)) return;
+    const mat = matFor(line);
+    if (mat?.price && mat.baseUnit && mat.baseUnit > 0) {
+      patchLine(line.id, { usage: round4((amount * mat.baseUnit) / mat.price) });
+      return;
+    }
+    if (mat?.price && line.usage > 0) {
+      updateMaterial(mat.id, { baseUnit: round4((mat.price * line.usage) / amount) });
+      return;
+    }
+    if (line.usage > 0) {
+      ensureMaterial(line, { price: round4(amount / line.usage), baseUnit: 1 });
+      return;
+    }
+    setNote(t.checkName);
+  };
+
+  const addLine = (text: string) => {
+    const name = text.trim();
+    setAdding(false);
+    if (!name) return;
+    const hit = findMaterial({ materialId: null, name }, materials);
+    save([
+      ...lines,
+      { id: uid("l"), materialId: hit?.id ?? null, name: hit?.name ?? name, usage: 0 },
+    ]);
+  };
+
+  const commitMargin = () => {
+    const rate = parseMargin(marginText);
+    if (rate == null) {
+      setMarginText(stats.margin == null ? "" : String(round2(stats.margin * 100)));
+      return;
+    }
+    if (stats.margin != null && Math.abs(rate - stats.margin) < 0.00005) return;
+    editVersion(row.dish.id, { margin: rate });
+  };
+
+  const setSale = (text: string) => {
+    const sale = parseNum(text);
+    if (sale == null || stats.cost == null || !(sale > stats.cost)) return;
+    editVersion(row.dish.id, { margin: round4(1 - stats.cost / sale) });
+  };
+
+  const copyDish = () => {
+    addDish({
+      name: row.dish.name + t.copySuffix,
+      nameEn: row.dish.nameEn ? row.dish.nameEn + " (copy)" : "",
+      categoryId: row.dish.categoryId,
+      margin: row.version.margin,
+      note: row.version.note,
+      lines: lines.map((line) => ({ ...line, id: uid("l") })),
+      enteredCost: null,
+      enteredSale: null,
+    });
+  };
+
+  return (
+    <article
+      className={cn(
+        "min-w-0 rounded-xl border border-l-4 border-line bg-bg-elev shadow-[0_1px_2px_rgb(0_0_0/0.04)]",
+        toneBorder[tone],
+      )}
+    >
+      <header className="flex items-center gap-2 border-b border-line px-4 py-3">
+        <button
+          type="button"
+          onClick={onOpen}
+          title={t.details}
+          className="min-w-0 flex-1 truncate text-left text-base font-semibold text-fg hover:underline"
+        >
+          {shownName(row.dish.name, row.dish.nameEn, lang)}
+          {row.dish.listed === false ? (
+            <span className="ml-2 text-xs font-normal text-bad">{t.offShelf}</span>
+          ) : null}
+        </button>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums",
+            toneBadge[tone],
+          )}
+        >
+          {t.margin} {formatPct(stats.margin)}
+        </span>
+        <button
+          type="button"
+          onClick={copyDish}
+          aria-label={t.copyDish}
+          title={t.copyDish}
+          className="grid size-8 shrink-0 place-items-center rounded-md border border-line text-faint hover:text-fg"
+        >
+          <CopyIcon className="size-3.5" strokeWidth={1.5} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setAskDish(true)}
+          aria-label={t.removeDish}
+          title={t.removeDish}
+          className="grid size-8 shrink-0 place-items-center rounded-md border border-line text-faint hover:text-bad"
+        >
+          <X className="size-4" strokeWidth={1.5} />
+        </button>
+      </header>
+      {askDish ? (
+        <div className="flex flex-wrap items-center justify-end gap-3 border-b border-line bg-bg-soft px-4 py-2 text-sm">
+          <span className="text-muted">{t.confirmDeleteQ(row.dish.name)}</span>
+          <button
+            type="button"
+            className="h-8 rounded-md border border-bad px-3 text-sm text-bad"
+            onClick={() => {
+              void clearDishFiles(row.dish.id);
+              removeDish(row.dish.id);
+            }}
+          >
+            {t.yesDelete}
+          </button>
+          <button
+            type="button"
+            className="h-8 rounded-md border border-line px-3 text-sm text-muted"
+            onClick={() => setAskDish(false)}
+          >
+            {t.cancel}
+          </button>
+        </div>
+      ) : null}
+
+      <div className="px-3 pt-2">
+        <div className={`${boardGrid} text-xs text-faint sm:hidden`}>
+          <span className="px-1 text-right">{t.colUnit}</span>
+          <span className="px-1 text-right">{t.colPrice}</span>
+          <span className="px-1 text-right">{t.qtyShort}</span>
+          <span className="px-1 text-right">{t.colAmount}</span>
+          <span />
+        </div>
+        <div className={`${boardGrid} border-line text-xs text-faint max-sm:hidden`}>
+          <span className="px-2">{t.ingredient}</span>
+          <span className="px-2 text-right">{t.colUnit}</span>
+          <span className="px-2 text-right">{t.colPrice}</span>
+          <span className="px-2 text-right">{t.qtyShort}</span>
+          <span className="px-2 text-right">{t.colAmount}</span>
+          <span />
+        </div>
+        {lines.map((line) => {
+          const mat = matFor(line);
+          const amount = lineAmount(mat?.price ?? null, mat?.baseUnit ?? null, line.usage);
+          if (ask === line.id) {
+            return (
+              <div
+                key={line.id}
+                className="flex flex-wrap items-center justify-end gap-3 border-b border-line/70 px-2 py-1.5 text-sm"
+              >
+                <span className="text-muted">{t.confirmDeleteQ(line.name || t.ingredient)}</span>
+                <button
+                  type="button"
+                  className="h-8 rounded-md border border-bad px-3 text-sm text-bad"
+                  onClick={() => {
+                    setAsk(null);
+                    save(lines.filter((item) => item.id !== line.id));
+                  }}
+                >
+                  {t.yesDelete}
+                </button>
+                <button
+                  type="button"
+                  className="h-8 rounded-md border border-line px-3 text-sm text-muted"
+                  onClick={() => setAsk(null)}
+                >
+                  {t.cancel}
+                </button>
+              </div>
+            );
+          }
+          return (
+            <div key={line.id} className={boardGrid}>
+              <div className="flex min-w-0 items-center max-sm:order-1 max-sm:col-span-4">
+                <EditCell
+                  value={line.name}
+                  list="board-materials"
+                  onSave={(text) => setName(line, text)}
+                  className="min-w-0 flex-1"
+                >
+                  <span className="truncate">{line.name || "—"}</span>
+                  {!mat && line.name ? (
+                    <span className="ml-2 shrink-0 text-xs text-bad">{t.noMatch}</span>
+                  ) : null}
+                </EditCell>
+                <EditCell
+                  value={mat?.code ?? ""}
+                  onSave={(text) => setCode(line, text)}
+                  className="shrink-0 px-1 text-[0.7rem] text-faint"
+                >
+                  {mat?.code || t.code}
+                </EditCell>
+              </div>
+              <EditCell
+                value={mat?.baseUnit == null ? "" : String(mat.baseUnit)}
+                inputMode="decimal"
+                align="right"
+                onSave={(text) => setUnit(line, text)}
+                className="max-sm:order-3 max-sm:px-1 max-sm:text-xs"
+              >
+                {plainNum(mat?.baseUnit)}
+              </EditCell>
+              <EditCell
+                value={mat?.price == null ? "" : String(mat.price)}
+                inputMode="decimal"
+                align="right"
+                onSave={(text) => setPrice(line, text)}
+                className="max-sm:order-4 max-sm:px-1 max-sm:text-xs"
+              >
+                <span className="truncate">{plainNum(mat?.price)}</span>
+              </EditCell>
+              <EditCell
+                value={formatQty(line.usage)}
+                inputMode="decimal"
+                align="right"
+                onSave={(text) => setUsage(line, text)}
+                className="max-sm:order-5 max-sm:px-1 max-sm:text-xs"
+              >
+                {formatQty(line.usage)}
+              </EditCell>
+              <EditCell
+                value={amount == null ? "" : String(amount)}
+                inputMode="decimal"
+                align="right"
+                onSave={(text) => setAmount(line, text)}
+                className="max-sm:order-6 max-sm:px-1 max-sm:text-xs"
+              >
+                {amount == null ? (
+                  <span className="truncate text-xs text-bad">{line.name ? t.noPrice : "—"}</span>
+                ) : (
+                  <span className="truncate">{plainNum(amount)}</span>
+                )}
+              </EditCell>
+              <button
+                type="button"
+                aria-label={t.removeLine}
+                onClick={() => setAsk(line.id)}
+                className="grid size-7 place-items-center rounded-md text-faint hover:bg-bg-soft hover:text-bad max-sm:order-2"
+              >
+                <X className="size-3.5" strokeWidth={1.5} />
+              </button>
+            </div>
+          );
+        })}
+        {adding ? (
+          <div className="border-b border-line/70 py-1">
+            <EditCell
+              value=""
+              list="board-materials"
+              autoEdit
+              onSave={addLine}
+              onCancel={() => setAdding(false)}
+            >
+              {""}
+            </EditCell>
+          </div>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="my-2 flex h-9 w-full items-center justify-center gap-1 rounded-md border border-dashed border-line text-sm text-muted hover:border-fg hover:text-fg"
+        >
+          <Plus className="size-4" strokeWidth={1.5} />
+          {t.addFood}
+        </button>
+        {note ? <p className="pb-2 text-xs text-bad">{note}</p> : null}
+      </div>
+
+      <footer className="rounded-b-xl border-t border-line bg-bg-soft/50 px-4 pt-3 pb-2">
+        <div className="grid grid-cols-2 items-end gap-3 sm:grid-cols-[1fr_auto_1fr]">
+          <div className="min-w-0">
+            <p className="text-xs text-faint">{t.totalCost}</p>
+            <p className="truncate text-xl font-semibold text-fg tabular-nums">
+              {moneyOrDash(stats.cost)}
+            </p>
+          </div>
+          <label className="block text-center max-sm:order-3 max-sm:col-span-2 max-sm:flex max-sm:items-center max-sm:gap-3 max-sm:text-left">
+            <span className="text-xs text-faint">{t.marginRate}</span>
+            <span className="relative mt-1 block max-sm:mt-0">
+              <Input
+                value={marginText}
+                inputMode="decimal"
+                aria-label={t.marginRate}
+                onChange={(e) => setMarginText(e.target.value)}
+                onBlur={commitMargin}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
+                className="h-9 w-24 pr-7 text-right tabular-nums"
+              />
+              <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm text-faint">
+                %
+              </span>
+            </span>
+          </label>
+          <div className="min-w-0 text-right max-sm:order-2">
+            <p className="text-xs text-faint">{t.suggestedPrice}</p>
+            <EditCell
+              value={stats.sale == null ? "" : String(Math.round(stats.sale))}
+              inputMode="decimal"
+              align="right"
+              onSave={setSale}
+              className="h-9 px-0 text-xl font-semibold text-good sm:text-2xl"
+            >
+              <span className="truncate">{moneyOrDash(stats.sale)}</span>
+            </EditCell>
+          </div>
+        </div>
+        <input
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          onBlur={() => {
+            if (noteText.trim() !== row.version.note.trim())
+              editVersion(row.dish.id, { note: noteText.trim() });
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+          placeholder={t.cardNotePh}
+          aria-label={t.cardNotePh}
+          className="mt-2 h-8 w-full rounded-md bg-transparent px-0 text-xs text-muted outline-none placeholder:text-faint focus:bg-bg-elev focus:px-2"
+        />
+      </footer>
+    </article>
+  );
+}
+
+function EditCell({
+  value,
+  children,
+  onSave,
+  onCancel,
+  align = "left",
+  list,
+  inputMode,
+  autoEdit = false,
+  className,
+}: {
+  value: string;
+  children: ReactNode;
+  onSave: (text: string) => void;
+  onCancel?: () => void;
+  align?: "left" | "right";
+  list?: string;
+  inputMode?: "decimal" | "text";
+  autoEdit?: boolean;
+  className?: string;
+}) {
+  const { t } = useLang();
+  const [editing, setEditing] = useState(autoEdit);
+  const [text, setText] = useState(value);
+  const closed = useRef(false);
+
+  const start = (e?: { stopPropagation: () => void }) => {
+    e?.stopPropagation();
+    setText(value);
+    closed.current = false;
+    setEditing(true);
+  };
+  const finish = (keep: boolean) => {
+    if (closed.current) return;
+    closed.current = true;
+    setEditing(false);
+    if (keep && text.trim() !== value.trim()) onSave(text);
+    else onCancel?.();
+  };
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={text}
+        list={list}
+        inputMode={inputMode}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => finish(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            finish(true);
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            finish(false);
+          }
+        }}
+        className={cn(
+          "h-8 w-full min-w-0 rounded-md border border-fg bg-bg px-2 text-sm text-fg outline-none",
+          align === "right" && "text-right tabular-nums",
+          className,
+        )}
+      />
+    );
+  }
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      title={t.dblEdit}
+      onDoubleClick={(e) => start(e)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === "F2") {
+          e.preventDefault();
+          start(e);
+        }
+      }}
+      className={cn(
+        "flex h-8 min-w-0 cursor-text touch-manipulation items-center overflow-hidden rounded-md px-2 text-sm whitespace-nowrap select-none hover:bg-bg-soft",
+        align === "right" && "justify-end tabular-nums",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
