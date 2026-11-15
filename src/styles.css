@@ -185,7 +185,10 @@
 }
 
 .rise-in {
-  animation: rise-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* backwards, not both: a transform held after the animation would make every
+     position:fixed panel inside (dish page, pop-ups) size to the whole page
+     instead of the screen, so they could not scroll. */
+  animation: rise-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 .skip-intro {
