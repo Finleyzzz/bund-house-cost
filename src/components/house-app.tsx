@@ -176,11 +176,17 @@ export function HouseApp({ onSignOut, onReplay }: { onSignOut: () => void; onRep
     });
   };
 
+  const [homeKey, setHomeKey] = useState(0);
+  /** The top-left logo: back to the home page — 菜品, on sale, first category, top of the page, nothing open. */
   const goHome = () => {
     setStudio(null);
     setCatsOpen(false);
     setLibraryOpen(false);
+    setMatCatsOpen(false);
     setQuery("");
+    setSearchMode("dish");
+    setShelf("on");
+    setHomeKey((k) => k + 1);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -457,6 +463,7 @@ export function HouseApp({ onSignOut, onReplay }: { onSignOut: () => void; onRep
         <p className="px-4 py-16 text-center text-sm text-muted sm:px-8">{t.empty}</p>
       ) : (
         <CategoryBoard
+          key={homeKey}
           groups={[
             ...(watched.length > 0
               ? [{ id: "watch", title: t.watch, sub: "", rows: watched, canAdd: false }]
@@ -2332,11 +2339,9 @@ function CategoryBoard({
 }) {
   const { lang, t } = useLang();
   const materials = useCostStore((s) => s.materials);
-  const editVersion = useCostStore((s) => s.editVersion);
   const [pick, setPick] = useState<string | null>(null);
   const [find, setFind] = useState("");
   const [sort, setSort] = useState<BoardSort>("default");
-  const [unify, setUnify] = useState<string | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const headerH = useHeaderHeight();
   const active =
@@ -2347,7 +2352,6 @@ function CategoryBoard({
   const choose = (id: string) => {
     setPick(id);
     setFind("");
-    setUnify(null);
     const box = topRef.current;
     if (!box) return;
     const top = box.getBoundingClientRect().top + window.scrollY - headerH - 8;
@@ -2380,13 +2384,6 @@ function CategoryBoard({
   const avgCost = costed.length
     ? costed.reduce((sum, row) => sum + (row.stats.cost ?? 0), 0) / costed.length
     : null;
-
-  const applyUnify = () => {
-    const rate = parseMargin(unify ?? "");
-    if (rate == null) return;
-    for (const row of active.rows) editVersion(row.dish.id, { margin: rate });
-    setUnify(null);
-  };
 
   const navItem = (selected: boolean) =>
     cn(
@@ -2520,37 +2517,6 @@ function CategoryBoard({
             </span>
           </span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            {unify == null ? (
-              active.rows.length > 0 ? (
-                <Button variant="line" onClick={() => setUnify("70")}>
-                  {t.unifyMargin}
-                </Button>
-              ) : null
-            ) : (
-              <span className="flex items-center gap-2">
-                <span className="relative">
-                  <Input
-                    autoFocus
-                    value={unify}
-                    onChange={(e) => setUnify(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") applyUnify();
-                      if (e.key === "Escape") setUnify(null);
-                    }}
-                    inputMode="decimal"
-                    aria-label={t.unifyMargin}
-                    className="h-10 w-20 pr-6 text-right tabular-nums"
-                  />
-                  <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-sm text-faint">
-                    %
-                  </span>
-                </span>
-                <Button onClick={applyUnify}>{t.unifyApply}</Button>
-                <Button variant="line" onClick={() => setUnify(null)}>
-                  {t.cancel}
-                </Button>
-              </span>
-            )}
             {active.canAdd ? (
               <Button onClick={() => onNew(active.id)}>
                 <Plus className="size-4" strokeWidth={1.5} />
