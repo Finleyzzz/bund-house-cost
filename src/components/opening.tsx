@@ -53,6 +53,19 @@ const INTRO_STREAKS = Array.from({ length: 18 }, (_, i) => ({
 }));
 
 const INTRO_MS = 2450;
+const INTRO_LOGO = "/brand/intro-logo.png";
+/** The shine is masked to the logo strokes. Kept out of styles.css on purpose:
+ *  a url() there makes the server and browser builds name the stylesheet differently. */
+const INTRO_MASK: React.CSSProperties = {
+  WebkitMaskImage: `url(${INTRO_LOGO})`,
+  maskImage: `url(${INTRO_LOGO})`,
+  WebkitMaskSize: "contain",
+  maskSize: "contain",
+  WebkitMaskRepeat: "no-repeat",
+  maskRepeat: "no-repeat",
+  WebkitMaskPosition: "center",
+  maskPosition: "center",
+};
 const FADE_MS = 520;
 const INTRO_BG = "#041a13";
 
@@ -61,18 +74,14 @@ function useGreenPage() {
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
-    const prev = {
-      root: root.style.background,
-      body: body.style.background,
-      over: root.style.overscrollBehavior,
-    };
     root.style.background = INTRO_BG;
     body.style.background = INTRO_BG;
     root.style.overscrollBehavior = "none";
     return () => {
-      root.style.background = prev.root;
-      body.style.background = prev.body;
-      root.style.overscrollBehavior = prev.over;
+      // Hand the page back to the app's own theme colours.
+      root.style.background = "";
+      body.style.background = "";
+      root.style.overscrollBehavior = "";
     };
   }, []);
 }
@@ -129,8 +138,8 @@ export function IntroScreen({ onSkip }: { onSkip: () => void }) {
         ))}
       </div>
       <div className="intro-stage" aria-hidden="true">
-        <div className="intro-logo">
-          <img className="intro-img" src="/brand/intro-logo.png" alt="" />
+        <div className="intro-logo" style={INTRO_MASK}>
+          <img className="intro-img" src={INTRO_LOGO} alt="" />
           <span className="intro-shine" />
         </div>
       </div>
