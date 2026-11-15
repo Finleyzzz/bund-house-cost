@@ -9,11 +9,11 @@ export function Wordmark({
 }) {
   if (variant === "hero") {
     return (
-      <img src="/brand/logo.png" alt="Bund House" className="logo-reveal mx-auto h-[42vh] max-h-80 w-auto" />
+      <img src="/brand/intro-logo.png" alt="Bund House" className="logo-reveal mx-auto h-[42vh] max-h-80 w-auto rounded-full" />
     );
   }
 
-  const img = <img src="/brand/logo.png" alt="" className="h-11 w-auto" />;
+  const img = <img src="/brand/intro-logo.png" alt="" className="size-11 rounded-full" />;
   if (!onHome) return <div className="flex items-center">{img}</div>;
   return (
     <button type="button" onClick={onHome} aria-label={label} className="rounded-md">
