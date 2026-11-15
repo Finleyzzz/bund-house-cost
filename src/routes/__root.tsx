@@ -32,7 +32,7 @@ export const Route = createRootRoute({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              'try{var t=localStorage.getItem("bund-house-theme");document.documentElement.dataset.theme=t==="dark"?"dark":"light";var l=localStorage.getItem("bund-house-lang");document.documentElement.lang=l==="en"?"en":"zh-Hans";}catch(e){document.documentElement.dataset.theme="light";}',
+              'document.documentElement.style.background="#041a13";try{var t=localStorage.getItem("bund-house-theme");document.documentElement.dataset.theme=t==="dark"?"dark":"light";var l=localStorage.getItem("bund-house-lang");document.documentElement.lang=l==="en"?"en":"zh-Hans";}catch(e){document.documentElement.dataset.theme="light";}',
           }}
         />
         <HeadContent />
