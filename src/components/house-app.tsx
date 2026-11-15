@@ -1014,6 +1014,19 @@ function Studio({
   });
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<DraftLine[]>([]);
+  const [focusLine, setFocusLine] = useState<string | null>(null);
+  const addDraftLine = () => {
+    const line = blankLine();
+    setLines((curr) => [...curr, line]);
+    setFocusLine(line.id);
+  };
+  useEffect(() => {
+    if (!focusLine) return;
+    const row = document.querySelector<HTMLElement>(`[data-line="${focusLine}"]`);
+    row?.scrollIntoView({ block: "center", behavior: "smooth" });
+    row?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+    setFocusLine(null);
+  }, [focusLine, lines]);
   const [costText, setCostText] = useState("");
   const [saleText, setSaleText] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -1399,11 +1412,7 @@ function Studio({
           <div className="mt-8 flex items-end justify-between gap-3">
             <h2 className="text-lg font-semibold">{t.ingredients}</h2>
             {(editing || creating) && (
-              <Button
-                variant="line"
-                size="sm"
-                onClick={() => setLines((curr) => [...curr, blankLine()])}
-              >
+              <Button variant="line" size="sm" onClick={addDraftLine}>
                 <Plus className="size-4" strokeWidth={1.5} />
                 {t.addLine}
               </Button>
@@ -1412,8 +1421,10 @@ function Studio({
           <p className="mt-1 text-sm text-muted">{t.amountRule}</p>
 
           <div className="mt-3 overflow-x-auto">
-            <ul className="mt-3 min-w-[36rem]">
-              <li className={`${ingredientGrid} text-xs text-faint`}>
+            <ul className={editing || creating ? "mt-3" : "mt-3 min-w-[36rem]"}>
+              <li
+                className={`${ingredientGrid} text-xs text-faint${editing || creating ? " hidden" : ""}`}
+              >
                 <span>{t.code}</span>
                 <span>{t.ingredients}</span>
                 <span className="text-right">{t.qty}</span>
@@ -1436,7 +1447,11 @@ function Studio({
                   (!linked || linked.price == null || !(linked.baseUnit && linked.baseUnit > 0));
                 if (draft) {
                   return (
-                    <li key={draft.id} className="mt-3 rounded-xl border border-line p-3">
+                    <li
+                      key={draft.id}
+                      data-line={draft.id}
+                      className="mt-3 rounded-xl border border-line p-3"
+                    >
                       <div className="flex items-start gap-2">
                         <label className="block min-w-0 flex-1">
                           <span className="mb-1 block text-xs text-faint">{t.ingredient}</span>
@@ -1543,6 +1558,16 @@ function Studio({
           {shownLines.length === 0 && !editing && !creating && (
             <p className="mt-3 text-sm text-muted">{t.noIngredients}</p>
           )}
+          {(editing || creating) && lines.length > 0 ? (
+            <button
+              type="button"
+              onClick={addDraftLine}
+              className="mt-3 flex h-11 w-full items-center justify-center gap-1 rounded-xl border border-dashed border-line text-sm text-muted hover:border-fg hover:text-fg"
+            >
+              <Plus className="size-4" strokeWidth={1.5} />
+              {t.addLine}
+            </button>
+          ) : null}
           <datalist id="material-names">
             {materials.map((item) => (
               <option key={item.id} value={item.name} />
