@@ -1,10 +1,20 @@
+import type React from "react";
 import { useEffect, useState } from "react";
 import { Wordmark } from "@/components/wordmark";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useLang } from "@/lib/lang";
 import { useCostStore } from "@/lib/cost/store";
-import { expectedPassword, faceAvailable, faceEnrolled, passwordsMatch, registerFace, unlockToday, unlockedToday, verifyFace } from "@/lib/cost/lock";
+import {
+  expectedPassword,
+  faceAvailable,
+  faceEnrolled,
+  passwordsMatch,
+  registerFace,
+  unlockToday,
+  unlockedToday,
+  verifyFace,
+} from "@/lib/cost/lock";
 import type { Account } from "@/lib/cost/types";
 
 export function LangToggle() {
@@ -15,7 +25,9 @@ export function LangToggle() {
         type="button"
         aria-pressed={lang === "zh"}
         onClick={() => setLang("zh")}
-        className={lang === "zh" ? "h-9 rounded bg-fg px-2.5 text-ink" : "h-9 rounded px-2.5 text-muted"}
+        className={
+          lang === "zh" ? "h-9 rounded bg-fg px-2.5 text-ink" : "h-9 rounded px-2.5 text-muted"
+        }
       >
         中文
       </button>
@@ -23,7 +35,9 @@ export function LangToggle() {
         type="button"
         aria-pressed={lang === "en"}
         onClick={() => setLang("en")}
-        className={lang === "en" ? "h-9 rounded bg-fg px-2.5 text-ink" : "h-9 rounded px-2.5 text-muted"}
+        className={
+          lang === "en" ? "h-9 rounded bg-fg px-2.5 text-ink" : "h-9 rounded px-2.5 text-muted"
+        }
       >
         EN
       </button>
@@ -31,35 +45,110 @@ export function LangToggle() {
   );
 }
 
+const INTRO_STREAKS = Array.from({ length: 18 }, (_, i) => ({
+  x: (i * 100) / 18 + ((i * 37) % 7) * 0.35,
+  w: 3 + ((i * 53) % 5) * 2,
+  d: 1.9 + ((i * 29) % 9) * 0.035,
+  c: ["#dcc18b", "#f3dca6", "#34d399", "#b8955a", "#16a06b", "#e9cf98"][(i * 7) % 6],
+}));
+
+const INTRO_MS = 2450;
+const FADE_MS = 520;
+const INTRO_BG = "#041a13";
+
+/** While the intro or sign-in screen shows, paint the page itself dark green so no light edge ever shows. */
+function useGreenPage() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    const prev = {
+      root: root.style.background,
+      body: body.style.background,
+      over: root.style.overscrollBehavior,
+    };
+    root.style.background = INTRO_BG;
+    body.style.background = INTRO_BG;
+    root.style.overscrollBehavior = "none";
+    return () => {
+      root.style.background = prev.root;
+      body.style.background = prev.body;
+      root.style.overscrollBehavior = prev.over;
+    };
+  }, []);
+}
+
+/**
+ * Netflix-style intro using the real Bund House logo: it opens out from the
+ * centre with a gold glow, a gold light sweeps across the strokes, BUNDHOUSE
+ * types in, light streaks burst, then the view dives through the logo.
+ * The whole screen (and the page behind it) stays dark green — never white.
+ */
 export function IntroScreen({ onSkip }: { onSkip: () => void }) {
   const { t } = useLang();
+  const [phase, setPhase] = useState<"play" | "fading">("play");
+
+  useGreenPage();
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timer = window.setTimeout(onSkip, reduce ? 400 : 1600);
+    if (reduce) {
+      onSkip();
+      return;
+    }
+    const timer = window.setTimeout(() => setPhase("fading"), INTRO_MS);
     return () => window.clearTimeout(timer);
   }, [onSkip]);
 
+  useEffect(() => {
+    if (phase !== "fading") return;
+    const timer = window.setTimeout(onSkip, FADE_MS);
+    return () => window.clearTimeout(timer);
+  }, [phase, onSkip]);
+
   return (
-    <main className="night relative grid min-h-dvh place-items-center overflow-hidden bg-void px-6">
-      <div className="logo-stage is-playing">
-        <img
-          src="/brand/logo.png"
-          alt="Bund House"
-          width={480}
-          height={480}
-          decoding="async"
-          className="logo-reveal mx-auto h-[34vh] max-h-64 w-auto"
-        />
+    <div
+      className={`intro go${phase === "fading" ? " fading" : ""}`}
+      onClick={() => setPhase("fading")}
+      role="button"
+      aria-label={t.skip}
+    >
+      <div className="intro-streaks" aria-hidden="true">
+        {INTRO_STREAKS.map((s, i) => (
+          <i
+            key={i}
+            style={
+              {
+                left: `${s.x}%`,
+                width: s.w,
+                animationDelay: `${s.d}s`,
+                "--from": `${(50 - s.x).toFixed(1)}vw`,
+                background: `linear-gradient(to top, transparent, ${s.c} 30%, ${s.c} 70%, transparent)`,
+              } as React.CSSProperties
+            }
+          />
+        ))}
       </div>
-      <button type="button" className="skip-intro" onClick={onSkip}>
-        {t.skip}
-      </button>
-    </main>
+      <div className="intro-stage" aria-hidden="true">
+        <div className="intro-logo">
+          <img className="intro-img" src="/brand/intro-logo.png" alt="" />
+          <span className="intro-shine" />
+        </div>
+      </div>
+      <div className="intro-word" aria-hidden="true">
+        {"BUNDHOUSE".split("").map((ch, i) => (
+          <span key={i} style={{ animationDelay: `${1.05 + i * 0.045}s` }}>
+            {ch}
+          </span>
+        ))}
+      </div>
+      <div className="intro-sub">{t.introSub}</div>
+      <span className="intro-skip">{t.tapSkip}</span>
+    </div>
   );
 }
 
 export function GateScreen() {
+  useGreenPage();
   const { t } = useLang();
   const accounts = useCostStore((s) => s.accounts);
   const signIn = useCostStore((s) => s.signIn);
@@ -170,7 +259,9 @@ export function GateScreen() {
                   <span className="grid size-28 place-items-center rounded-md border border-transparent bg-bg-soft font-display text-5xl text-fg transition-[border-color,transform] duration-150 group-hover:border-fg group-active:scale-[0.96] sm:size-36 sm:text-6xl">
                     {account.name.slice(0, 1).toUpperCase()}
                   </span>
-                  <span className="text-lg text-muted transition-colors group-hover:text-fg">{account.name}</span>
+                  <span className="text-lg text-muted transition-colors group-hover:text-fg">
+                    {account.name}
+                  </span>
                 </button>
               ))}
             </div>
