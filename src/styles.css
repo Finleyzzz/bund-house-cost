@@ -309,8 +309,6 @@
 .intro-logo {
   position: absolute;
   inset: 0;
-  -webkit-mask: url(/brand/intro-logo.png) center / contain no-repeat;
-  mask: url(/brand/intro-logo.png) center / contain no-repeat;
 }
 .intro-img {
   position: absolute;
